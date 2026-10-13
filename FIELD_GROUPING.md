@@ -1,317 +1,720 @@
-# analytics.transactions_data_source — Field Lineage (Grouped by Same Flow)
+# analytics.transactions_data_source — Field Lineage (Grouped, 96 Fields)
 
-## Group A — Direct Pass-Through
+## Overview
 
-### Flow Diagram (Direct field projection from `public.fact_transaction`)
+This document traces all **96 fields** in `analytics.transactions_data_source`, backtraced from the analytics insert SQL and then presented in forward flow:
+
 ```text
-Raw (raw_import_cache.transaction, raw_import_cache.transactionCommitted)
--> Staging (warehouse_loader.fact_transaction_base)
--> Public (public.fact_transaction)
--> Analytics (analytics.transactions_data_source)
+Raw (raw_import_cache)
+→ Staging (warehouse_loader.fact_transaction_base)
+→ Public (public.fact_transaction + public dimensions)
+→ Analytics (analytics.transactions_data_source)
+```
+
+### Source Value Rules
+
+Only these values are used in **Source**:
+
+- `Backend`
+- `ETL`
+- `Third-party`
+- `Derived`
+
+### Source Inheritance Rule
+
+If a value is direct pass-through (rename only, no business logic), Source inherits from upstream origin (e.g., `transaction_guid` remains `Backend`, not `ETL`).
+
+---
+
+## Group 1: Dates
+
+### Flow
+
+```text
+tblTransaction / tblTransactionCommitted / tblTransactionRolledBack / tblTransaction_PerformanceAttribute
+→ raw_import_cache.transaction / transactionCommitted / transactionRolledBack / transactionPerformanceAttribute
+→ warehouse_loader.fact_transaction_base
+→ public.fact_transaction
+→ analytics.transactions_data_source
 ```
 
 ### Raw
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| raw_import_cache.transaction | one row per transaction_guid | Transaction_GUID | varchar | Transaction identifier | TXN-123 | Backend | LINK_RAW_A_001 | Base transaction key extracted from source transaction table. |
-| raw_import_cache.transaction | one row per transaction_guid | Create_dm | timestamp | Transaction start datetime UTC | 2026-10-01 16:10:00 | Backend | LINK_RAW_A_002 | Raw start datetime used to populate start timestamp lineage. |
-| raw_import_cache.transactionCommitted | one row per committed transaction_guid | Create_dm | timestamp | Commit datetime UTC | 2026-10-01 16:11:05 | Backend | LINK_RAW_A_003 | Raw commit event timestamp feeding commit lineage. |
-| raw_import_cache.transactionRolledBack | one row per rolledback transaction_guid | Create_dm | timestamp | Rollback datetime UTC | NULL | Backend | LINK_RAW_A_004 | Raw rollback timestamp feeding rollback lineage. |
-| raw_import_cache.transactionCommitted | one row per committed transaction_guid | Confirmation_cd | varchar | POS confirmation code | CNF908812 | Backend | LINK_RAW_A_005 | Direct source for POS confirmation. |
-| raw_import_cache.transactionCommitted | one row per committed transaction_guid | ReservedSeats_tx | varchar | Reserved seats payload | A10,A11 | Backend | LINK_RAW_A_006 | Raw reserved seat text used for seating outputs. |
-| raw_import_cache.transactionCommitted | one row per committed transaction_guid | Loyalty_cd | varchar | Loyalty code | LOY123 | Backend | LINK_RAW_A_007 | Raw loyalty value forwarded through layers. |
-| raw_import_cache.transaction | one row per transaction_guid | DeviceType_cd | varchar | Device type code | Mobile | Backend | LINK_RAW_A_008 | Raw device classification. |
-| raw_import_cache.transactionPerformanceAttribute | one row per tx-performance | Performance_dm | timestamp | Performance local datetime | 2026-10-05 19:30:00 | Backend | LINK_RAW_A_009 | Raw local showtime value. |
-| raw_import_cache.transactionAttribute | one row per tx attribute | value_tx (CharityName) | varchar | Charity name attribute | Save The Arts | Backend | LINK_RAW_A_010 | Source attribute for charity name. |
-| raw_import_cache.transactionAttribute | one row per tx attribute | value_tx (PartnerDefinedData) | varchar | Partner-defined payload | campaign=fall | Backend | LINK_RAW_A_011 | Source attribute for partner payload. |
-| raw_import_cache.transactionAttribute | one row per tx attribute | value_tx (IsBuyNowOrder) | varchar | Buy-now marker | true | Backend | LINK_RAW_A_012 | Source value for upstream booleanization. |
-| raw_import_cache.transactionAttribute | one row per tx attribute | value_tx (NetworkToken) | varchar | Network token marker | true | Backend | LINK_RAW_A_013 | Source for network token usage derivation. |
-| raw_import_cache.transactionItem | one row per transaction item | Item_qy / Item_at / fee-tax fields | numeric/int | Item and monetary components | 2 / 35.00 | Backend | LINK_RAW_A_014 | Financial primitives aggregated upstream into public transaction measures. |
+| raw_import_cache.transaction | one row per transaction_guid | Create_dm | timestamp | Transaction created datetime (UTC) | 2026-09-29 14:58:11 | Backend | LINK_RAW_DATES_001 | Extracted from `tblTransaction.Create_dm` |
+| raw_import_cache.transactionCommitted | one row per committed transaction_guid | Create_dm | timestamp | Transaction commit datetime | 2026-09-29 15:00:05 | Backend | LINK_RAW_DATES_002 | Extracted from `tblTransactionCommitted.Create_dm` |
+| raw_import_cache.transactionRolledBack | one row per rolledback transaction_guid | Create_dm | timestamp | Transaction rollback datetime | 2026-09-29 15:03:40 | Backend | LINK_RAW_DATES_003 | From rolled-back transaction source table |
+| raw_import_cache.transactionPerformanceAttribute | one row per transaction-performance | Performance_dm | timestamp | Local performance/showtime datetime | 2026-10-03 19:30:00 | Backend | LINK_RAW_DATES_004 | Extracted from `tblTransaction_PerformanceAttribute.Performance_dm` |
 
 ### Staging
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_guid | varchar | Transaction identifier | TXN-123 | Backend | LINK_STG_A_001 | Direct pass-through key from raw transaction GUID. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_start_datetime | timestamp | Start datetime UTC | 2026-10-01 16:10:00 | Backend | LINK_STG_A_002 | Cast from raw transaction create timestamp. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_commit_datetime | timestamp | Commit datetime UTC | 2026-10-01 16:11:05 | Backend | LINK_STG_A_003 | Sourced from committed transaction create timestamp. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_rollback_datetime | timestamp | Rollback datetime UTC | NULL | Backend | LINK_STG_A_004 | Sourced from rollback transaction timestamp when present. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_end_datetime | timestamp | Final lifecycle timestamp | 2026-10-01 16:11:05 | Derived | LINK_STG_A_005 | Derived via CASE prioritizing rollback/commit/start timeline. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | point_of_sale_confirmation_code | varchar | POS confirmation code | CNF908812 | Backend | LINK_STG_A_006 | Passes confirmation code downstream. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_reserved_seating | boolean | Reserved seating indicator | true | Derived | LINK_STG_A_007 | Boolean derived from reserved seats text existence. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | reserved_seats | varchar | Reserved seats payload | A10,A11 | Backend | LINK_STG_A_008 | Trimmed/standardized reserved seat text. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | loyalty_code | varchar | Loyalty code | LOY123 | Backend | LINK_STG_A_009 | Trimmed loyalty code from committed record. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | performance_datetime_local | timestamp | Local showtime datetime | 2026-10-05 19:30:00 | Backend | LINK_STG_A_010 | Pulled from performance attribute timestamp. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | deviceType | varchar | Device type | Mobile | Backend | LINK_STG_A_011 | Direct map from raw device code. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_test | boolean | Test transaction flag | false | Derived | LINK_STG_A_012 | Multi-condition test classification logic in staging SQL. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived | LINK_STG_A_013 | Derived from fanclub attribute values. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived | LINK_STG_A_014 | Derived from buy-now attribute values. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | charity_name | varchar | Charity name | Save The Arts | Backend | LINK_STG_A_015 | Attribute extraction pass-through. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | partner_defined_data_value | varchar | Partner payload | campaign=fall | Backend | LINK_STG_A_016 | Attribute extraction pass-through. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | network_token_usage | boolean | Network token usage | true | Derived | LINK_STG_A_017 | Normalized true/false derivation from attribute text. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_plf / is_imax / is_3d / is_higher_fee_amenity | boolean | Amenity indicators | true/false | Derived | LINK_STG_A_018 | Amenity-aggregate temp-table logic populates these flags. |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_start_datetime | timestamp | Transaction start datetime UTC | 2026-09-29 14:58:11 | Backend | LINK_STG_DATES_001 | `t.Create_dm::timestamp` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_commit_datetime | timestamp | Commit datetime UTC | 2026-09-29 15:00:05 | Backend | LINK_STG_DATES_002 | `tc.create_dm` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_rollback_datetime | timestamp | Rollback datetime UTC | 2026-09-29 15:03:40 | Backend | LINK_STG_DATES_003 | `tr.create_dm` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_end_datetime | timestamp | Final event datetime UTC | 2026-09-29 15:03:40 | Derived | LINK_STG_DATES_004 | CASE over commit/rollback/start |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | performance_datetime_local | timestamp | Local performance datetime | 2026-10-03 19:30:00 | Backend | LINK_STG_DATES_005 | `tpa.Performance_dm` |
 
 ### Public
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| public.fact_transaction | one row per transaction_guid | transaction_guid | varchar | Transaction identifier | TXN-123 | Backend | LINK_PUB_A_001 | Directly retained transaction key. |
-| public.fact_transaction | one row per transaction_guid | is_successful | boolean | Success flag | true | Derived | LINK_PUB_A_002 | Upstream outcome derivation retained in public fact. |
-| public.fact_transaction | one row per transaction_guid | transaction_start_datetime | timestamp | Start datetime UTC | 2026-10-01 16:10:00 | Backend | LINK_PUB_A_003 | Pass-through from staging start datetime. |
-| public.fact_transaction | one row per transaction_guid | transaction_commit_datetime | timestamp | Commit datetime UTC | 2026-10-01 16:11:05 | Backend | LINK_PUB_A_004 | Pass-through from staging commit datetime. |
-| public.fact_transaction | one row per transaction_guid | transaction_rollback_datetime | timestamp | Rollback datetime UTC | NULL | Backend | LINK_PUB_A_005 | Pass-through from staging rollback datetime. |
-| public.fact_transaction | one row per transaction_guid | transaction_end_datetime | timestamp | Final lifecycle datetime | 2026-10-01 16:11:05 | Derived | LINK_PUB_A_006 | Pass-through of upstream derived end timestamp. |
-| public.fact_transaction | one row per transaction_guid | transaction_end_datetime_local | timestamp | Local end datetime | 2026-10-01 09:11:05 | Derived | LINK_PUB_A_007 | Localized timestamp retained in public model. |
-| public.fact_transaction | one row per transaction_guid | point_of_sale_confirmation_code | varchar | POS confirmation code | CNF908812 | Backend | LINK_PUB_A_008 | Direct pass-through. |
-| public.fact_transaction | one row per transaction_guid | is_reserved_seating | boolean | Reserved seating indicator | true | Derived | LINK_PUB_A_009 | Pass-through of staging boolean derivation. |
-| public.fact_transaction | one row per transaction_guid | reserved_seats | varchar | Reserved seats payload | A10,A11 | Backend | LINK_PUB_A_010 | Pass-through reserved seat values. |
-| public.fact_transaction | one row per transaction_guid | loyalty_code | varchar | Loyalty code | LOY123 | Backend | LINK_PUB_A_011 | Pass-through loyalty value. |
-| public.fact_transaction | one row per transaction_guid | performance_datetime_local | timestamp | Local showtime | 2026-10-05 19:30:00 | Backend | LINK_PUB_A_012 | Pass-through showtime. |
-| public.fact_transaction | one row per transaction_guid | payment_types | varchar | Payment method labels | VISA | Backend | LINK_PUB_A_013 | Public fact financial attribute. |
-| public.fact_transaction | one row per transaction_guid | processor_order_ids | varchar | Processor order ids | ord_123 | Third-party | LINK_PUB_A_014 | Processor-generated references. |
-| public.fact_transaction | one row per transaction_guid | item_count | int | Item count | 2 | Derived | LINK_PUB_A_015 | Aggregated count used as analytics `item_qty`. |
-| public.fact_transaction | one row per transaction_guid | gross_transaction_amount + fee/return/charity fields | numeric(19,4) | Monetary metrics | 42.50 etc | Backend/Derived | LINK_PUB_A_016 | Public fact stores normalized financial outputs consumed directly by analytics. |
-| public.fact_transaction | one row per transaction_guid | POS_reference_cd | varchar | POS reference code | POSREF1 | Backend | LINK_PUB_A_017 | Direct pass-through reference code. |
-| public.fact_transaction | one row per transaction_guid | is_test / is_fanclub / is_buynow / network_token_usage | boolean | Behavioral flags | true/false | Derived | LINK_PUB_A_018 | Upstream staging derivations preserved. |
-| public.fact_transaction | one row per transaction_guid | deviceType | varchar | Device type | Mobile | Backend | LINK_PUB_A_019 | Pass-through from staging. |
-| public.fact_transaction | one row per transaction_guid | charity_name | varchar | Charity name | Save The Arts | Backend | LINK_PUB_A_020 | Pass-through from staging attribute extraction. |
-| public.fact_transaction | one row per transaction_guid | partner_defined_data_value | varchar | Partner payload | campaign=fall | Backend | LINK_PUB_A_021 | Pass-through from staging attribute extraction. |
-| public.fact_transaction | one row per transaction_guid | is_plf / is_imax / is_3d / is_higher_fee_amenity | boolean | Amenity flags | true/false | Derived | LINK_PUB_A_022 | Pass-through of staging amenity derivations. |
+| public.fact_transaction | one row per transaction_guid | transaction_start_datetime | timestamp | Start datetime UTC | 2026-09-29 14:58:11 | Backend | LINK_PUB_DATES_001 | Pass-through from staging |
+| public.fact_transaction | one row per transaction_guid | transaction_commit_datetime | timestamp | Commit datetime UTC | 2026-09-29 15:00:05 | Backend | LINK_PUB_DATES_002 | Pass-through from staging |
+| public.fact_transaction | one row per transaction_guid | transaction_rollback_datetime | timestamp | Rollback datetime UTC | 2026-09-29 15:03:40 | Backend | LINK_PUB_DATES_003 | Pass-through from staging |
+| public.fact_transaction | one row per transaction_guid | transaction_end_datetime | timestamp | Final datetime UTC | 2026-09-29 15:03:40 | Derived | LINK_PUB_DATES_004 | Pass-through derived staging value |
+| public.fact_transaction | one row per transaction_guid | transaction_end_datetime_local | timestamp | Local final datetime | 2026-09-29 08:03:40 | Derived | LINK_PUB_DATES_005 | Localized in public layer |
+| public.fact_transaction | one row per transaction_guid | performance_datetime_local | timestamp | Local showtime | 2026-10-03 19:30:00 | Backend | LINK_PUB_DATES_006 | Pass-through from staging |
 
 ### Analytics
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| analytics.transactions_data_source | one row per transaction_guid | transaction_guid | varchar | Transaction identifier | TXN-123 | Backend | LINK_AN_A_001 | Direct select from public.fact_transaction.transaction_guid. |
-| analytics.transactions_data_source | one row per transaction_guid | is_successful | boolean | Success flag | true | Derived | LINK_AN_A_002 | Direct select from public.fact_transaction.is_successful. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_start_datetime_utc | timestamp | UTC start datetime | 2026-10-01 16:10:00 | Backend | LINK_AN_A_003 | Alias-only projection from public.fact_transaction.transaction_start_datetime. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_commit_datetime_utc | timestamp | UTC commit datetime | 2026-10-01 16:11:05 | Backend | LINK_AN_A_004 | Alias-only projection from public.fact_transaction.transaction_commit_datetime. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_rollback_datetime_utc | timestamp | UTC rollback datetime | NULL | Backend | LINK_AN_A_005 | Alias-only projection from public.fact_transaction.transaction_rollback_datetime. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_end_datetime_utc | timestamp | UTC end datetime | 2026-10-01 16:11:05 | Derived | LINK_AN_A_006 | Alias-only projection from public.fact_transaction.transaction_end_datetime. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_end_datetime_local | timestamp | Local end datetime | 2026-10-01 09:11:05 | Derived | LINK_AN_A_007 | Direct pass-through projection. |
-| analytics.transactions_data_source | one row per transaction_guid | point_of_sale_confirmation_code / is_reserved_seating / reserved_seats / loyalty_code | mixed | Core transaction attributes | CNF..., true | Backend/Derived | LINK_AN_A_008 | Direct pass-through projections from public.fact_transaction fields. |
-| analytics.transactions_data_source | one row per transaction_guid | performance_datetime_local | timestamp | Local showtime | 2026-10-05 19:30:00 | Backend | LINK_AN_A_009 | Direct projection from public.fact_transaction.performance_datetime_local. |
-| analytics.transactions_data_source | one row per transaction_guid | payment_types / processor_order_ids / item_qty | mixed | Payment + count fields | VISA / ord_123 / 2 | Backend/Third-party/Derived | LINK_AN_A_010 | `item_qty` is rename-only from public.fact_transaction.item_count; others direct. |
-| analytics.transactions_data_source | one row per transaction_guid | gross_transaction_amount + fee/return/charity fields | numeric(19,4) | Financial metrics | 42.50 etc | Backend/Derived | LINK_AN_A_011 | Direct financial projections from public.fact_transaction metrics. |
-| analytics.transactions_data_source | one row per transaction_guid | POS_reference_cd | varchar | POS reference | POSREF1 | Backend | LINK_AN_A_012 | Direct pass-through from public.fact_transaction.POS_reference_cd. |
-| analytics.transactions_data_source | one row per transaction_guid | is_test / deviceType / is_fanclub / is_buynow / network_token_usage | mixed | Flags/device fields | false / Mobile | Backend/Derived | LINK_AN_A_013 | Direct projections from public.fact_transaction outputs. |
-| analytics.transactions_data_source | one row per transaction_guid | charity_name / partner_defined_data_value | varchar | Attribute payload fields | Save The Arts / campaign=fall | Backend | LINK_AN_A_014 | Direct projections from public.fact_transaction fields. |
-| analytics.transactions_data_source | one row per transaction_guid | is_plf / is_imax / is_3d / is_higher_fee_amenity | boolean | Amenity flags | true/false | Derived | LINK_AN_A_015 | Direct projections from public.fact_transaction flag outputs. |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_start_datetime_utc | timestamp | Start datetime UTC | 2026-09-29 14:58:11 | Backend | LINK_AN_DATES_001 | `ft.transaction_start_datetime` |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_start_datetime_los_angeles | timestamp | Start datetime Pacific | 2026-09-29 07:58:11 | Derived | LINK_AN_DATES_002 | `CONVERT_TIMEZONE('US/Pacific', ft.transaction_start_datetime)` |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_commit_datetime_utc | timestamp | Commit datetime UTC | 2026-09-29 15:00:05 | Backend | LINK_AN_DATES_003 | `ft.transaction_commit_datetime` |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Commit datetime Pacific | 2026-09-29 08:00:05 | Derived | LINK_AN_DATES_004 | Timezone conversion |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_rollback_datetime_utc | timestamp | Rollback datetime UTC | 2026-09-29 15:03:40 | Backend | LINK_AN_DATES_005 | `ft.transaction_rollback_datetime` |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Rollback datetime Pacific | 2026-09-29 08:03:40 | Derived | LINK_AN_DATES_006 | Timezone conversion |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_end_datetime_utc | timestamp | Final event datetime UTC | 2026-09-29 15:03:40 | Derived | LINK_AN_DATES_007 | `ft.transaction_end_datetime` (derived upstream) |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_end_datetime_los_angeles | timestamp | Final event datetime Pacific | 2026-09-29 08:03:40 | Derived | LINK_AN_DATES_008 | Timezone conversion |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_end_datetime_local | timestamp | Final event local datetime | 2026-09-29 08:03:40 | Derived | LINK_AN_DATES_009 | `ft.transaction_end_datetime_local` |
+| analytics.transactions_data_source | one row per transaction_guid | performance_datetime_local | timestamp | Local showtime datetime | 2026-10-03 19:30:00 | Backend | LINK_AN_DATES_010 | `ft.performance_datetime_local` |
+| analytics.transactions_data_source | one row per transaction_guid | deltareleasetopurchasedate | int | Days release→purchase | 17 | Derived | LINK_AN_DATES_011 | DATEDIFF(movie_release_date, purchase day) |
+| analytics.transactions_data_source | one row per transaction_guid | deltareleasetoshowtimedate | int | Days release→showtime | 21 | Derived | LINK_AN_DATES_012 | DATEDIFF(movie_release_date, showtime day) |
+| analytics.transactions_data_source | one row per transaction_guid | deltapurchasetoshowtimedate | int | Days purchase→showtime | 4 | Derived | LINK_AN_DATES_013 | DATEDIFF(purchase day, showtime day) |
 
 ---
 
-## Group B — Derived in Analytics
+## Group 2: Amounts
 
-### Flow Diagram (Analytics-layer calculations using public fact + movie/affiliate/channel context)
+### Flow
+
 ```text
-Raw (raw_import_cache.transaction, raw_import_cache.transactionPerformanceAttribute)
--> Staging (warehouse_loader.fact_transaction_base)
--> Public (public.fact_transaction, public.dim_movie, public.dim_affiliate, public.dim_channel)
--> Analytics (analytics.transactions_data_source)
+tblTransaction_Item + related payment/return upstream feeds
+→ raw_import_cache.transactionItem (+ other raw financial feeds)
+→ warehouse_loader.fact_transaction_base and/or downstream financial build
+→ public.fact_transaction
+→ analytics.transactions_data_source
 ```
 
 ### Raw
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| raw_import_cache.transaction | one row per transaction_guid | Create_dm | timestamp | Base UTC event timestamp | 2026-10-01 16:10:00 | Backend | LINK_RAW_B_001 | Seeds UTC lifecycle timestamps later transformed in analytics. |
-| raw_import_cache.transactionPerformanceAttribute | one row per tx-performance | Performance_dm | timestamp | Local showtime timestamp | 2026-10-05 19:30:00 | Backend | LINK_RAW_B_002 | Input for purchase-to-showtime and release-to-showtime deltas. |
-| raw_import_cache.transaction | one row per transaction_guid | Affiliate_id | int | Affiliate id | 11879 | Backend | LINK_RAW_B_003 | Drives CASE mapping for grouping/apps/platform outputs. |
-| raw_import_cache.transaction | one row per transaction_guid | Channel_cd | varchar | Channel code | WAP | Backend | LINK_RAW_B_004 | Drives channel-aware CASE logic for platform mapping. |
+| raw_import_cache.transactionItem | one row per transaction item | Item_at | numeric | Item amount | 35.00 | Backend | LINK_RAW_AMT_001 | Extracted from `tblTransaction_Item.Item_at` |
+| raw_import_cache.transactionItem | one row per transaction item | Tax_at | numeric | Tax amount | 1.75 | Backend | LINK_RAW_AMT_002 | Extracted from `tblTransaction_Item.Tax_at` |
+| raw_import_cache.transactionItem | one row per transaction item | SalesFee_at | numeric | Sales fee amount | 5.00 | Backend | LINK_RAW_AMT_003 | Extracted from `tblTransaction_Item.SalesFee_at` |
+| raw_import_cache.transactionItem | one row per transaction item | SurchargeFee_at | numeric | Surcharge fee amount | 1.50 | Backend | LINK_RAW_AMT_004 | Extracted from `tblTransaction_Item.SurchargeFee_at` |
+| raw_import_cache.transactionItem | one row per transaction item | ReservedFee_at | numeric | Reservation fee amount | 0.75 | Backend | LINK_RAW_AMT_005 | Extracted from `tblTransaction_Item.ReservedFee_at` |
+| raw_import_cache.transactionItem | one row per transaction item | WaivedSalesFee_at | numeric | Waived sales fee amount | 0.00 | Backend | LINK_RAW_AMT_006 | Extracted from `tblTransaction_Item.WaivedSalesFee_at` |
+| raw_import_cache.transactionItem | one row per transaction item | CardFee_at | numeric | Card fee amount | 0.25 | Backend | LINK_RAW_AMT_007 | Extracted from `tblTransaction_Item.CardFee_at` |
+| raw_import_cache.transactionItem | one row per transaction item | taxable_at | numeric | Taxable amount | 5.00 | Backend | LINK_RAW_AMT_008 | Extracted taxable basis |
+| raw_import_cache.transactionItem | one row per transaction item | Item_qy / TotalAdmissions_qy | int | Quantity metrics | 2 | Backend | LINK_RAW_AMT_009 | Item and admission counts |
 
 ### Staging
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_start_datetime / transaction_commit_datetime / transaction_rollback_datetime / transaction_end_datetime | timestamp | UTC lifecycle timestamps | 2026-10-01 ... | Backend/Derived | LINK_STG_B_001 | Staging standardizes lifecycle timestamps consumed by public fact and then converted in analytics. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | performance_datetime_local | timestamp | Local performance datetime | 2026-10-05 19:30:00 | Backend | LINK_STG_B_002 | Passes local performance timestamp downstream for date arithmetic. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | affiliate_key / channel_key | bigint | Dimension keys | 8123 / 291 | ETL | LINK_STG_B_003 | Enables analytics CASE logic by resolving affiliate/channel context through dimensions. |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | (financial totals populated downstream) | various | Financial totals generally finalized in public.fact_transaction | n/a | ETL | LINK_STG_AMT_001 | Staging focuses on keys/flags; final amounts selected from public.fact_transaction in analytics SQL |
 
 ### Public
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| public.fact_transaction | one row per transaction_guid | transaction_start_datetime / transaction_commit_datetime / transaction_rollback_datetime / transaction_end_datetime | timestamp | UTC timestamps used in analytics derivations | 2026-10-01 ... | Backend/Derived | LINK_PUB_B_001 | Inputs for timezone conversions and purchase-day truncation logic. |
-| public.fact_transaction | one row per transaction_guid | performance_datetime_local | timestamp | Local showtime datetime | 2026-10-05 19:30:00 | Backend | LINK_PUB_B_002 | Input to showtime-related delta calculations. |
-| public.dim_movie | one row per movie_key | movie_release_date | date | Movie release date | 2026-09-14 | Backend | LINK_PUB_B_003 | Input to all release-based DATEDIFF calculations. |
-| public.dim_affiliate | one row per affiliate_key | affiliate_id | int | Affiliate identifier | 11879 | Backend | LINK_PUB_B_004 | Input to CASE buckets for grouping and app buckets. |
-| public.dim_channel | one row per channel_key | channel_name | varchar | Channel detail | WAP | Backend | LINK_PUB_B_005 | Input to platform CASE branching. |
+| public.fact_transaction | one row per transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 42.50 | Backend | LINK_PUB_AMT_001 | Upstream transaction amount rollup |
+| public.fact_transaction | one row per transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee amount | 5.00 | Backend | LINK_PUB_AMT_002 | Upstream fee rollup |
+| public.fact_transaction | one row per transaction_guid | waived_sales_fee_ticket_count | int | Count of waived sales fee tickets | 0 | Derived | LINK_PUB_AMT_003 | Aggregated count |
+| public.fact_transaction | one row per transaction_guid | waived_fanclub_fee_ticket_count | int | Count of waived fanclub fee tickets | 0 | Derived | LINK_PUB_AMT_004 | Aggregated count |
+| public.fact_transaction | one row per transaction_guid | returned_amount | numeric(19,4) | Returned amount | Purchase: 0.00 / Refund: -42.50 | Derived | LINK_PUB_AMT_005 | Updated by return logic |
+| public.fact_transaction | one row per transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | Purchase: 0.00 / Refund: -5.00 | Derived | LINK_PUB_AMT_006 | Return-related fee update |
+| public.fact_transaction | one row per transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Backend | LINK_PUB_AMT_007 | Upstream ticket component |
+| public.fact_transaction | one row per transaction_guid | waived_sales_fee_amount | numeric(19,4) | Waived sales fee amount | 0.00 | Backend | LINK_PUB_AMT_008 | Upstream amount |
+| public.fact_transaction | one row per transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 0.00 | Backend | LINK_PUB_AMT_009 | Upstream amount |
+| public.fact_transaction | one row per transaction_guid | surcharge_fee_amount | numeric(19,4) | Surcharge fee amount | 1.50 | Backend | LINK_PUB_AMT_010 | Upstream amount |
+| public.fact_transaction | one row per transaction_guid | sales_fee_return_amount | numeric(19,4) | Returned sales fee | Purchase: 0.00 / Refund: -5.00 | Derived | LINK_PUB_AMT_011 | Return metric |
+| public.fact_transaction | one row per transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Returned surcharge | Purchase: 0.00 / Refund: -1.50 | Derived | LINK_PUB_AMT_012 | Return metric |
+| public.fact_transaction | one row per transaction_guid | reservation_fee_return_amount | numeric(19,4) | Returned reservation fee | Purchase: 0.00 / Refund: -0.75 | Derived | LINK_PUB_AMT_013 | Return metric |
+| public.fact_transaction | one row per transaction_guid | tax_return_amount | numeric(19,4) | Returned tax amount | Purchase: 0.00 / Refund: -1.75 | Derived | LINK_PUB_AMT_014 | Return tax metric |
+| public.fact_transaction | one row per transaction_guid | card_fee_return_amount | numeric(19,4) | Returned card fee amount | Purchase: 0.00 / Refund: -0.25 | Derived | LINK_PUB_AMT_015 | Return metric |
+| public.fact_transaction | one row per transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee tied to later-returned purchase | 5.00 | Derived | LINK_PUB_AMT_016 | Return attribution metric |
+| public.fact_transaction | one row per transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 5.00 | Derived | LINK_PUB_AMT_017 | Taxable fee measure |
+| public.fact_transaction | one row per transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Backend | LINK_PUB_AMT_018 | Upstream charity amount |
+| public.fact_transaction | one row per transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross amount before charity adjustments | 43.50 | Derived | LINK_PUB_AMT_019 | Derived gross metric |
+| public.fact_transaction | one row per transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | Purchase: 0.00 / Refund: -1.00 | Derived | LINK_PUB_AMT_020 | Return charity metric |
+| public.fact_transaction | one row per transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | Purchase: 0.00 / Refund: -1.00 | Derived | LINK_PUB_AMT_021 | Return charity metric |
 
 ### Analytics
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| analytics.transactions_data_source | one row per transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived | LINK_AN_B_001 | `CONVERT_TIMEZONE('US/Pacific', public.fact_transaction.transaction_start_datetime)`. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived | LINK_AN_B_002 | Timezone conversion from UTC commit timestamp. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived | LINK_AN_B_003 | Timezone conversion from UTC rollback timestamp. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived | LINK_AN_B_004 | Timezone conversion from UTC end timestamp. |
-| analytics.transactions_data_source | one row per transaction_guid | deltareleasetopurchasedate | int | Days release to purchase day | 17 | Derived | LINK_AN_B_005 | DATEDIFF between movie release date and Pacific purchase date. |
-| analytics.transactions_data_source | one row per transaction_guid | deltareleasetoshowtimedate | int | Days release to showtime day | 21 | Derived | LINK_AN_B_006 | DATEDIFF between release date and local performance date. |
-| analytics.transactions_data_source | one row per transaction_guid | deltapurchasetoshowtimedate | int | Days purchase day to showtime day | 4 | Derived | LINK_AN_B_007 | DATEDIFF between Pacific purchase day and local showtime day. |
-| analytics.transactions_data_source | one row per transaction_guid | Affiliate Grouping | varchar | Detailed affiliate bucket | iPhone App | Derived | LINK_AN_B_008 | CASE map by affiliate identifiers into named affiliate buckets. |
-| analytics.transactions_data_source | one row per transaction_guid | Affiliate Grouping - HIGH LEVEL BINS | varchar | High-level affiliate bucket | Fandango O&O | Derived | LINK_AN_B_009 | CASE map consolidating affiliate detail into high-level bins. |
-| analytics.transactions_data_source | one row per transaction_guid | apps | varchar | App label bucket | Fandango App: iPhone | Derived | LINK_AN_B_010 | CASE map assigning app-centric reporting label. |
-| analytics.transactions_data_source | one row per transaction_guid | platform | varchar | Platform reporting bucket | Mobile Apps | Derived | LINK_AN_B_011 | CASE map using affiliate/channel logic for platform rollup. |
+| analytics.transactions_data_source | one row per transaction_guid | gross_transaction_amount | numeric(19,4) | Gross transaction amount | 42.50 | Backend | LINK_AN_AMT_001 | `ft.gross_transaction_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee amount | 5.00 | Backend | LINK_AN_AMT_002 | `ft.sales_fee_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | waived_sales_fee_ticket_count | int | Waived sales fee ticket count | 0 | Derived | LINK_AN_AMT_003 | `ft.waived_sales_fee_ticket_count` |
+| analytics.transactions_data_source | one row per transaction_guid | waived_fanclub_fee_ticket_count | int | Waived fanclub fee ticket count | 0 | Derived | LINK_AN_AMT_004 | `ft.waived_fanclub_fee_ticket_count` |
+| analytics.transactions_data_source | one row per transaction_guid | returned_amount | numeric(19,4) | Returned amount | Purchase: 0.00 / Refund: -42.50 | Derived | LINK_AN_AMT_005 | `ft.returned_amount`; late update block refreshes |
+| analytics.transactions_data_source | one row per transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | Purchase: 0.00 / Refund: -5.00 | Derived | LINK_AN_AMT_006 | `ft.returned_fee_amount`; late update block refreshes |
+| analytics.transactions_data_source | one row per transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Backend | LINK_AN_AMT_007 | `ft.ticket_sales_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | waived_sales_fee_amount | numeric(19,4) | Waived sales fee amount | 0.00 | Backend | LINK_AN_AMT_008 | `ft.waived_sales_fee_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 0.00 | Backend | LINK_AN_AMT_009 | `ft.waived_fanclub_fee_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | surcharge_fee_amount | numeric(19,4) | Surcharge fee amount | 1.50 | Backend | LINK_AN_AMT_010 | `ft.surcharge_fee_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | sales_fee_return_amount | numeric(19,4) | Sales fee return amount | Purchase: 0.00 / Refund: -5.00 | Derived | LINK_AN_AMT_011 | `ft.sales_fee_return_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Surcharge fee return amount | Purchase: 0.00 / Refund: -1.50 | Derived | LINK_AN_AMT_012 | `ft.surcharge_fee_return_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | reservation_fee_return_amount | numeric(19,4) | Reservation fee return amount | Purchase: 0.00 / Refund: -0.75 | Derived | LINK_AN_AMT_013 | `ft.reservation_fee_return_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | tax_return_amount | numeric(19,4) | Tax return amount | Purchase: 0.00 / Refund: -1.75 | Derived | LINK_AN_AMT_014 | `ft.tax_return_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | card_fee_return_amount | numeric(19,4) | Card fee return amount | Purchase: 0.00 / Refund: -0.25 | Derived | LINK_AN_AMT_015 | `ft.card_fee_return_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee for returned purchase | 5.00 | Derived | LINK_AN_AMT_016 | `ft.sales_fee_amount_for_returned_purchase` |
+| analytics.transactions_data_source | one row per transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 5.00 | Derived | LINK_AN_AMT_017 | `ft.taxable_sales_fee_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Backend | LINK_AN_AMT_018 | `ft.charity_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | true_gross_transaction_amount | numeric(19,4) | True gross amount | 43.50 | Derived | LINK_AN_AMT_019 | `ft.true_gross_transaction_amount` |
+| analytics.transactions_data_source | one row per transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | Purchase: 0.00 / Refund: -1.00 | Derived | LINK_AN_AMT_020 | `ft.returned_charity_amount`; late update block refreshes |
+| analytics.transactions_data_source | one row per transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | Purchase: 0.00 / Refund: -1.00 | Derived | LINK_AN_AMT_021 | `ft.charity_return_amount` |
 
 ---
 
-## Group C — Dimension-Sourced
+## Group 3: Movie
 
-### Flow Diagram (Dimension key mapping, then dimension attribute projection)
+### Flow
+
 ```text
-Raw (raw_import_cache.transaction, raw_import_cache.transactionPerformanceAttribute, raw_import_cache.transactionAttribute)
--> Staging (warehouse_loader.fact_transaction_base)
--> Public (public.fact_transaction + public.dim_*)
--> Analytics (analytics.transactions_data_source)
+tblTransaction_PerformanceAttribute
+→ raw_import_cache.transactionPerformanceAttribute
+→ warehouse_loader.fact_transaction_base.movie_key
+→ public.dim_movie
+→ analytics.transactions_data_source
 ```
 
 ### Raw
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| raw_import_cache.transaction | one row per transaction_guid | Affiliate_id / Channel_cd / Transaction_tp / UserAgent_nm / Property_nm | mixed | Raw ids/codes for dimension resolution | 11879 / WAP / Purchase | Backend | LINK_RAW_C_001 | Source identifiers mapped to conformed surrogate keys in staging. |
-| raw_import_cache.transactionPerformanceAttribute | one row per tx-performance | Movie_detail_id / Theater_pkey | int | Raw movie and theater identifiers | 10293 / 4451 | Backend | LINK_RAW_C_002 | Raw identifiers used for movie/theater dimension key lookup. |
-| raw_import_cache.transactionCommitted | one row per committed transaction_guid | Confirmation_cd | varchar | Confirmation code for return-type mapping | REF123 | Backend | LINK_RAW_C_003 | Prefix logic supports return type key assignment upstream. |
-| raw_import_cache.transactionPurchaseFunnel | one row per transaction_guid + funnel | Funnel_cd | varchar | Purchase funnel code | 14 | Backend | LINK_RAW_C_004 | Raw funnel id mapped to purchase funnel key. |
-| raw_import_cache.transactionAttribute | one row per tx attribute | value_tx (partner-channel / partner-platform) | varchar | Partner channel/platform values | TMO / WEBVIEW | Third-party | LINK_RAW_C_005 | Attribute values mapped to partner dimension keys. |
+| raw_import_cache.transactionPerformanceAttribute | one row per transaction-performance | Movie_detail_id | int | Raw movie detail ID | 10293 | Backend | LINK_RAW_MOV_001 | Extracted movie id |
+| raw_import_cache.transactionPerformanceAttribute | one row per transaction-performance | Perf_id | bigint | Performance id | 998877 | Backend | LINK_RAW_MOV_002 | Used for showtime mapping |
 
 ### Staging
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | affiliate_key / channel_key / movie_key / theater_key / chain_key | bigint | Core conformed keys | 8123 / 291 / 129384 | ETL | LINK_STG_C_001 | Staging joins raw ids to conformed dimensions and stores surrogate keys. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_type_key / return_type_key | bigint | Type keys | 82 / 16 | ETL | LINK_STG_C_002 | Keys assigned via transaction type and return-type mapping logic. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | user_agent_key / purchase_funnel_key / property_key | bigint | Additional conformed keys | 298771 / 7231 / 45 | ETL | LINK_STG_C_003 | Key mapping for UA, funnel, and property dimensions. |
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | partner_channel_key / partner_platform_key | bigint | Partner dimension keys | 912 / 117 | ETL | LINK_STG_C_004 | Attribute-based partner values mapped to partner dims. |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | movie_key | bigint | Surrogate movie key | 129384 | ETL | LINK_STG_MOV_001 | Join `tpa.movie_detail_id = dim_movie.movie_id` |
 
 ### Public
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| public.dim_affiliate | one row per affiliate_key | affiliate_name / affiliate_group_name / affiliate_category_name / affiliate_id | mixed | Affiliate attributes | Fandango iOS App / 11879 | Backend/Derived | LINK_PUB_C_001 | Affiliate columns selected directly into analytics from affiliate join. |
-| public.dim_channel | one row per channel_key | channel_group / channel_name | varchar | Channel attributes | App / WAP | Backend/Derived | LINK_PUB_C_002 | Channel columns projected into analytics fields. |
-| public.dim_movie | one row per movie_key | movie_id / movie_title / movie_parent_id / movie_parent_title / movie_release_date / movie_tms_id | mixed | Movie attributes | 10293 / Example Movie | Backend/Derived/Third-party | LINK_PUB_C_003 | Movie columns populate film and release/TMS analytics outputs. |
-| public.dim_chain | one row per chain_key | chain_name / chain_id / point_of_sale_vendor / awards_program_name | mixed | Chain attributes | Example Cinemas / CHN019 | Backend/Derived/Third-party | LINK_PUB_C_004 | Chain columns projected into analytics chain outputs. |
-| public.dim_theater | one row per theater_key | theater/location/POS/terminal/capacity/timezone columns | mixed | Theater attributes | theater_id 4451, zip 90028 | Backend/Derived/Third-party | LINK_PUB_C_005 | Theater columns projected into analytics location outputs. |
-| public.dim_transaction_type | one row per transaction_type_key | transaction_type_id / transaction_type_name | varchar | Transaction type attributes | Purchase / Ticket Purchase | Backend/Derived | LINK_PUB_C_006 | Type attributes projected into analytics type outputs. |
-| public.dim_user_agent | one row per user_agent_key | user_agent_id / user_agent_description | varchar | User agent attributes | UA-1 / iOS Safari | Backend/Derived | LINK_PUB_C_007 | UA attributes projected into analytics customer outputs. |
-| public.dim_purchase_funnel | one row per purchase_funnel_key | purchase_funnel_id / purchase_funnel_name | varchar | Funnel attributes | 14 / Guest Checkout | Backend/Derived | LINK_PUB_C_008 | Funnel attributes projected into analytics customer outputs. |
-| public.dim_return_type | one row per return_type_key | return_method / return_type_code / return_type_description | varchar | Return type attributes | Self-service / REF | Backend/Derived | LINK_PUB_C_009 | Return-type attributes projected into analytics outputs. |
-| public.dim_property | one row per property_key | property_id / property_group | varchar | Property attributes | Fandango USA / Fandango | Backend/Derived | LINK_PUB_C_010 | Property attributes projected into analytics outputs. |
-| public.dim_partner_channel | one row per partner_channel_key | partner_channel_id / partner_display_name | varchar | Partner channel attributes | TMO / T-Mobile Tuesdays | Third-party | LINK_PUB_C_011 | Partner channel attributes projected into analytics outputs. |
-| public.dim_partner_platform | one row per partner_platform_key | partner_platform_id | varchar | Partner platform attribute | WEBVIEW | Third-party | LINK_PUB_C_012 | Partner platform attribute projected into analytics outputs. |
+| public.dim_movie | one row per movie_key | movie_id | int | Child movie ID | 10293 | Backend | LINK_PUB_MOV_001 | Movie id |
+| public.dim_movie | one row per movie_key | movie_title | varchar | Child movie title | The Example Movie | Backend | LINK_PUB_MOV_002 | Movie title |
+| public.dim_movie | one row per movie_key | movie_parent_id | int | Parent movie ID | 872 | Derived | LINK_PUB_MOV_003 | Parent relationship |
+| public.dim_movie | one row per movie_key | movie_parent_title | varchar | Parent movie title | Example Franchise | Derived | LINK_PUB_MOV_004 | Parent relationship |
+| public.dim_movie | one row per movie_key | movie_release_date | date | Movie release date | 2026-06-14 | Backend | LINK_PUB_MOV_005 | Release date |
+| public.dim_movie | one row per movie_key | movie_tms_id | varchar | TMS id | MV123456789 | Third-party | LINK_PUB_MOV_006 | External content id |
 
 ### Analytics
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| analytics.transactions_data_source | one row per transaction_guid | affiliate_name / affiliate_group_name / affiliate_category_name / affiliate_id | mixed | Affiliate reporting fields | Fandango iOS App / 11879 | Backend/Derived | LINK_AN_C_001 | Selected from public.dim_affiliate via affiliate key join path. |
-| analytics.transactions_data_source | one row per transaction_guid | channel / channel_ungrouped | varchar | Channel reporting fields | App / WAP | Backend/Derived | LINK_AN_C_002 | Selected from public.dim_channel attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | filmid_child / filmname_child / filmid_parent / filmname_parent / releasedate / movie_tms_id | mixed | Movie reporting fields | 10293 / Example Movie | Backend/Derived/Third-party | LINK_AN_C_003 | Selected from public.dim_movie attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | chainname / chainid / pos_vendor / awards_program_name | mixed | Chain reporting fields | Example Cinemas / CHN019 | Backend/Derived/Third-party | LINK_AN_C_004 | Selected from public.dim_chain attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | theater_id + location/POS/terminal/capacity/timezone fields | mixed | Theater reporting fields | 4451 / 90028 etc | Backend/Derived/Third-party | LINK_AN_C_005 | Selected from public.dim_theater attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | transaction_type_id / transaction_type_name | varchar | Transaction type fields | Purchase / Ticket Purchase | Backend/Derived | LINK_AN_C_006 | Selected from public.dim_transaction_type attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | user_agent_id / user_agent_description | varchar | User agent fields | UA-1 / iOS Safari | Backend/Derived | LINK_AN_C_007 | Selected from public.dim_user_agent attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | purchase_funnel_id / purchase_funnel_name | varchar | Funnel fields | 14 / Guest Checkout | Backend/Derived | LINK_AN_C_008 | Selected from public.dim_purchase_funnel attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | return_method / return_type_code / return_type_description | varchar | Return type fields | Self-service / REF | Backend/Derived | LINK_AN_C_009 | Selected from public.dim_return_type attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | property_id / property_group | varchar | Property fields | Fandango USA / Fandango | Backend/Derived | LINK_AN_C_010 | Selected from public.dim_property attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | partner_channel / partner_display_name / partner_platform | varchar | Partner fields | TMO / T-Mobile Tuesdays / WEBVIEW | Third-party | LINK_AN_C_011 | Selected from partner dimension attributes. |
-| analytics.transactions_data_source | one row per transaction_guid | braintree_merchant_id | varchar | Merchant id | bt_merch_1 | Third-party | LINK_AN_C_012 | Selected from public.dim_theater merchant attribute. |
+| analytics.transactions_data_source | one row per transaction_guid | filmid_child | int | Child movie id | 10293 | Backend | LINK_AN_MOV_001 | `film.movie_id` |
+| analytics.transactions_data_source | one row per transaction_guid | filmname_child | varchar | Child movie title | The Example Movie | Backend | LINK_AN_MOV_002 | `film.movie_title` |
+| analytics.transactions_data_source | one row per transaction_guid | filmid_parent | int | Parent movie id | 872 | Derived | LINK_AN_MOV_003 | `film.movie_parent_id` |
+| analytics.transactions_data_source | one row per transaction_guid | filmname_parent | varchar | Parent movie title | Example Franchise | Derived | LINK_AN_MOV_004 | `film.movie_parent_title` |
+| analytics.transactions_data_source | one row per transaction_guid | releasedate | date | Release date | 2026-06-14 | Backend | LINK_AN_MOV_005 | `film.movie_release_date` |
+| analytics.transactions_data_source | one row per transaction_guid | movie_tms_id | varchar | TMS id | MV123456789 | Third-party | LINK_AN_MOV_006 | `film.movie_tms_id` |
 
 ---
 
-## Group D — Raw-Enriched in Analytics
+## Group 4: Customer
 
-### Flow Diagram (ZIP enrichment from raw DMA table at analytics step)
+### Flow
+
 ```text
-Raw (raw_import_cache.designatedMarketArea)
--> Staging (warehouse_loader.fact_transaction_base)
--> Public (public.fact_transaction, public.dim_theater)
--> Analytics (analytics.transactions_data_source)
+tblTransaction + tblTransactionCommitted + tblTransactionCustomer + transactionAttribute + transactionPurchaseFunnel
+→ raw_import_cache.transaction / transactionCommitted / transactionCustomer / transactionAttribute / transactionPurchaseFunnel
+→ warehouse_loader.fact_transaction_base
+→ public.fact_transaction + dim_user_agent + dim_purchase_funnel
+→ analytics.transactions_data_source
 ```
 
 ### Raw
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| raw_import_cache.designatedMarketArea | one row per zip_code | zip_code | varchar | ZIP code for mapping | 90028 | Third-party | LINK_RAW_D_001 | Join key used against theater zip in analytics. |
-| raw_import_cache.designatedMarketArea | one row per zip_code | market_name | varchar | DMA market name | Los Angeles | Third-party | LINK_RAW_D_002 | Directly selected into analytics output. |
+| raw_import_cache.transaction | one row per transaction_guid | UserAgent_nm | varchar | Raw user agent id/value | Mozilla/... | Backend | LINK_RAW_CUS_001 | Feeds user_agent dim lookup |
+| raw_import_cache.transactionPurchaseFunnel | one row per tx funnel event | Funnel_cd | varchar | Raw purchase funnel code | 14 | Backend | LINK_RAW_CUS_002 | Feeds purchase_funnel dim lookup |
+| raw_import_cache.transactionCommitted | one row per committed transaction | Loyalty_cd | varchar | Raw loyalty code | LOY12345 | Backend | LINK_RAW_CUS_003 | Source loyalty code |
+| raw_import_cache.transaction | one row per transaction_guid | DeviceType_cd | varchar | Raw device type | Mobile | Backend | LINK_RAW_CUS_004 | Device source |
+| raw_import_cache.transactionAttribute | one row per tx attribute | attribute/value rows | varchar | Fanclub/buynow/networktoken etc attributes | true | Backend | LINK_RAW_CUS_005 | Attribute-driven fields |
 
 ### Staging
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | theater_key | bigint | Theater key | 11872 | ETL | LINK_STG_D_001 | Preserves path to theater zip used in analytics DMA enrichment join. |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | user_agent_key | bigint | User agent key | 298771 | ETL | LINK_STG_CUS_001 | Join `dua.user_agent_id = t.UserAgent_nm` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | purchase_funnel_key | bigint | Purchase funnel key | 7231 | ETL | LINK_STG_CUS_002 | Join `tpf.Funnel_cd = dpf.purchase_funnel_id` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | loyalty_code | varchar | Loyalty code | LOY12345 | Backend | LINK_STG_CUS_003 | `tc.Loyalty_cd` trimmed |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | deviceType | varchar | Device type | Mobile | Backend | LINK_STG_CUS_004 | `t.DeviceType_cd` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived | LINK_STG_CUS_005 | CASE over FanClubStatus attribute |
 
 ### Public
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| public.dim_theater | one row per theater_key | zip_code | varchar | Theater zip code | 90028 | Backend | LINK_PUB_D_001 | Zip join bridge to raw designatedMarketArea in analytics. |
+| public.dim_user_agent | one row per user_agent_key | user_agent_id | varchar | User agent id | UA_44321 | Backend | LINK_PUB_CUS_001 | Conformed id |
+| public.dim_user_agent | one row per user_agent_key | user_agent_description | varchar | User agent description | iOS Safari | Derived | LINK_PUB_CUS_002 | Friendly descriptor |
+| public.dim_purchase_funnel | one row per purchase_funnel_key | purchase_funnel_id | varchar | Funnel id | 14 | Backend | LINK_PUB_CUS_003 | Conformed id |
+| public.dim_purchase_funnel | one row per purchase_funnel_key | purchase_funnel_name | varchar | Funnel name | Guest Checkout | Derived | LINK_PUB_CUS_004 | Friendly name |
+| public.fact_transaction | one row per transaction_guid | loyalty_code | varchar | Loyalty code | LOY12345 | Backend | LINK_PUB_CUS_005 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | deviceType | varchar | Device type | Mobile | Backend | LINK_PUB_CUS_006 | Pass-through |
 
 ### Analytics
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| analytics.transactions_data_source | one row per transaction_guid | dma_market_name | varchar | DMA market name | Los Angeles | Third-party | LINK_AN_D_001 | Final value selected from raw_import_cache.designatedMarketArea using theater zip join in analytics SQL. |
+| analytics.transactions_data_source | one row per transaction_guid | user_agent_id | varchar | User agent id | UA_44321 | Backend | LINK_AN_CUS_001 | `dua.user_agent_id` |
+| analytics.transactions_data_source | one row per transaction_guid | user_agent_description | varchar | User agent description | iOS Safari | Derived | LINK_AN_CUS_002 | `dua.user_agent_description` |
+| analytics.transactions_data_source | one row per transaction_guid | purchase_funnel_id | varchar | Funnel id | 14 | Backend | LINK_AN_CUS_003 | `dpf.purchase_funnel_id` |
+| analytics.transactions_data_source | one row per transaction_guid | purchase_funnel_name | varchar | Funnel name | Guest Checkout | Derived | LINK_AN_CUS_004 | `dpf.purchase_funnel_name` |
+| analytics.transactions_data_source | one row per transaction_guid | loyalty_code | varchar | Loyalty code | LOY12345 | Backend | LINK_AN_CUS_005 | `ft.loyalty_code` |
+| analytics.transactions_data_source | one row per transaction_guid | deviceType | varchar | Device type | Mobile | Backend | LINK_AN_CUS_006 | `ft.deviceType` |
+| analytics.transactions_data_source | one row per transaction_guid | apps | varchar | App grouping | Fandango App: iPhone | Derived | LINK_AN_CUS_007 | CASE on affiliate ids |
+| analytics.transactions_data_source | one row per transaction_guid | platform | varchar | Platform grouping | Mobile Web | Derived | LINK_AN_CUS_008 | CASE on affiliate + channel |
 
 ---
 
-## Group E — Post-Insert Return Refresh
+## Group 5: Location
 
-### Flow Diagram (Initial insert plus return-window refresh)
+### Flow
+
 ```text
-Raw (return-related raw feeds)
--> Staging (warehouse_loader.fact_transaction_base)
--> Public (public.fact_transaction, public.fact_return)
--> Analytics (analytics.transactions_data_source)
+tblTransaction_PerformanceAttribute + theater dimensions + DMA mapping
+→ raw_import_cache.transactionPerformanceAttribute + raw_import_cache.designatedMarketArea
+→ warehouse_loader.fact_transaction_base.theater_key/chain_key
+→ public.dim_theater + public.dim_chain
+→ analytics.transactions_data_source
 ```
 
 ### Raw
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| raw return-related sources | one row per return event | return event timestamp + monetary components | mixed | Return lifecycle and amounts | 2026-10-02 ... | Backend | LINK_RAW_E_001 | Raw return events flow into return/public facts that drive analytics refresh logic. |
+| raw_import_cache.transactionPerformanceAttribute | one row per transaction-performance | Theater_pkey | int | Source theater id/key | 4451 | Backend | LINK_RAW_LOC_001 | Theater source key |
+| raw_import_cache.designatedMarketArea | one row per zip | zip_code | varchar | ZIP code for DMA mapping | 90028 | Third-party | LINK_RAW_LOC_002 | External DMA mapping source |
+| raw_import_cache.designatedMarketArea | one row per zip | market_name | varchar | DMA market name | Los Angeles | Third-party | LINK_RAW_LOC_003 | External market name |
 
 ### Staging
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| warehouse_loader.fact_transaction_base | one row per transaction_guid | return-sensitive amount measures | numeric(19,4) | Returned amount metrics | 0.00 | Derived | LINK_STG_E_001 | Return-linked transaction amount lineage propagated toward public layer. |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | theater_key | bigint | Theater dimension key | 11872 | ETL | LINK_STG_LOC_001 | Join from `tpa.Theater_pkey` to dim_theater |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | chain_key | bigint | Chain dimension key | 392 | ETL | LINK_STG_LOC_002 | Derived via dim_theater relationship |
 
 ### Public
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| public.fact_return | one row per return record | return_start_datetime / purchase_transaction_guid | timestamp/varchar | Return window + purchase mapping | 2026-10-02 / TXN-123 | Backend | LINK_PUB_E_001 | Analytics update identifies impacted purchase transactions using return-window filter. |
-| public.fact_transaction | one row per transaction_guid | returned_amount / returned_fee_amount / returned_charity_amount | numeric(19,4) | Latest returned metrics | -42.50 / -5.00 / -1.00 | Derived | LINK_PUB_E_002 | Source-of-truth values used in analytics post-insert refresh update. |
+| public.dim_theater | one row per theater_key | theater_id | int | Theater id | 4451 | Backend | LINK_PUB_LOC_001 | Theater identifier |
+| public.dim_theater | one row per theater_key | theater_code | varchar | Theater code | TH4451 | Derived | LINK_PUB_LOC_002 | Business code |
+| public.dim_theater | one row per theater_key | theater_name | varchar | Theater name | Example Cinemas Hollywood | Derived | LINK_PUB_LOC_003 | Display name |
+| public.dim_theater | one row per theater_key | pdi_id | varchar | PDI id | PDI9981 | Backend | LINK_PUB_LOC_004 | Theater system id |
+| public.dim_theater | one row per theater_key | point_of_sale_theater_id | varchar | POS theater id | POS_TH_4451 | Backend | LINK_PUB_LOC_005 | POS-specific theater id |
+| public.dim_theater | one row per theater_key | latitude | numeric | Latitude | 34.1021 | Backend | LINK_PUB_LOC_006 | Coordinate |
+| public.dim_theater | one row per theater_key | longitude | numeric | Longitude | -118.3402 | Backend | LINK_PUB_LOC_007 | Coordinate |
+| public.dim_theater | one row per theater_key | point_of_sale_id | varchar | POS id | POS01 | Backend | LINK_PUB_LOC_008 | POS identifier |
+| public.dim_theater | one row per theater_key | address_1 | varchar | Address line 1 | 1234 Example Blvd | Backend | LINK_PUB_LOC_009 | Address |
+| public.dim_theater | one row per theater_key | address_2 | varchar | Address line 2 | Suite 200 | Backend | LINK_PUB_LOC_010 | Address |
+| public.dim_theater | one row per theater_key | city_name | varchar | City | Los Angeles | Backend | LINK_PUB_LOC_011 | Address |
+| public.dim_theater | one row per theater_key | state_code | varchar | State | CA | Backend | LINK_PUB_LOC_012 | Address |
+| public.dim_theater | one row per theater_key | zip_code | varchar | ZIP code | 90028 | Backend | LINK_PUB_LOC_013 | Address |
+| public.dim_theater | one row per theater_key | country_code | varchar | Country | US | Backend | LINK_PUB_LOC_014 | Address |
+| public.dim_theater | one row per theater_key | alternate_theater_phone_name | varchar | Alternate theater phone/name | Main Box Office | Derived | LINK_PUB_LOC_015 | Theater metadata |
+| public.dim_theater | one row per theater_key | chain_specific_site_id | varchar | Chain site id | SITE_123 | Backend | LINK_PUB_LOC_016 | Theater metadata |
+| public.dim_theater | one row per theater_key | paymentech_terminal_id | varchar | Paymentech terminal id | PT_123 | Third-party | LINK_PUB_LOC_017 | Payment terminal metadata |
+| public.dim_theater | one row per theater_key | cybersource_terminal_id | varchar | Cybersource terminal id | CS_456 | Third-party | LINK_PUB_LOC_018 | Payment terminal metadata |
+| public.dim_theater | one row per theater_key | screen_count | int | Number of screens | 12 | Backend | LINK_PUB_LOC_019 | Theater attribute |
+| public.dim_theater | one row per theater_key | seat_count | int | Number of seats | 1800 | Backend | LINK_PUB_LOC_020 | Theater attribute |
+| public.dim_theater | one row per theater_key | theater_time_zone_name | varchar | Theater timezone | America/Los_Angeles | Backend | LINK_PUB_LOC_021 | Theater timezone |
+| public.dim_theater | one row per theater_key | braintree_merchant_id | varchar | Braintree merchant id | bt_merchant_123 | Third-party | LINK_PUB_LOC_022 | Payment processor mapping |
+| public.dim_chain | one row per chain_key | chain_name | varchar | Chain name | Example Cinemas | Derived | LINK_PUB_LOC_023 | Chain descriptor |
+| public.dim_chain | one row per chain_key | chain_id | varchar | Chain id | CHN019 | Backend | LINK_PUB_LOC_024 | Chain identifier |
+| public.dim_chain | one row per chain_key | point_of_sale_vendor | varchar | POS vendor | Vista | Third-party | LINK_PUB_LOC_025 | Vendor source |
+| public.dim_chain | one row per chain_key | awards_program_name | varchar | Awards program name | Example Rewards | Derived | LINK_PUB_LOC_026 | Program label |
 
 ### Analytics
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| analytics.transactions_data_source | one row per transaction_guid | returned_amount | numeric(19,4) | Returned amount after refresh | -42.50 | Derived | LINK_AN_E_001 | Inserted from public.fact_transaction and then refreshed in post-insert UPDATE for return-window transactions. |
-| analytics.transactions_data_source | one row per transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount after refresh | -5.00 | Derived | LINK_AN_E_002 | Same refresh pattern as returned_amount. |
-| analytics.transactions_data_source | one row per transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount after refresh | -1.00 | Derived | LINK_AN_E_003 | Same refresh pattern as returned_amount. |
+| analytics.transactions_data_source | one row per transaction_guid | chainname | varchar | Chain name | Example Cinemas | Derived | LINK_AN_LOC_001 | `chain.chain_name` |
+| analytics.transactions_data_source | one row per transaction_guid | chainid | varchar | Chain id | CHN019 | Backend | LINK_AN_LOC_002 | `chain.chain_id` |
+| analytics.transactions_data_source | one row per transaction_guid | pos_vendor | varchar | POS vendor | Vista | Third-party | LINK_AN_LOC_003 | `chain.point_of_sale_vendor` |
+| analytics.transactions_data_source | one row per transaction_guid | awards_program_name | varchar | Awards program name | Example Rewards | Derived | LINK_AN_LOC_004 | `chain.awards_program_name` |
+| analytics.transactions_data_source | one row per transaction_guid | theater_id | int | Theater id | 4451 | Backend | LINK_AN_LOC_005 | `tht.theater_id` |
+| analytics.transactions_data_source | one row per transaction_guid | theater_code | varchar | Theater code | TH4451 | Derived | LINK_AN_LOC_006 | `tht.theater_code` |
+| analytics.transactions_data_source | one row per transaction_guid | theater_name | varchar | Theater name | Example Cinemas Hollywood | Derived | LINK_AN_LOC_007 | `tht.theater_name` |
+| analytics.transactions_data_source | one row per transaction_guid | pdi_id | varchar | PDI id | PDI9981 | Backend | LINK_AN_LOC_008 | `tht.pdi_id` |
+| analytics.transactions_data_source | one row per transaction_guid | pos_theater_id | varchar | POS theater id | POS_TH_4451 | Backend | LINK_AN_LOC_009 | `tht.point_of_sale_theater_id` |
+| analytics.transactions_data_source | one row per transaction_guid | latitude | numeric | Latitude | 34.1021 | Backend | LINK_AN_LOC_010 | `tht.latitude` |
+| analytics.transactions_data_source | one row per transaction_guid | longitude | numeric | Longitude | -118.3402 | Backend | LINK_AN_LOC_011 | `tht.longitude` |
+| analytics.transactions_data_source | one row per transaction_guid | point_of_sale_id | varchar | POS id | POS01 | Backend | LINK_AN_LOC_012 | `tht.point_of_sale_id` |
+| analytics.transactions_data_source | one row per transaction_guid | address_1 | varchar | Address line 1 | 1234 Example Blvd | Backend | LINK_AN_LOC_013 | `tht.address_1` |
+| analytics.transactions_data_source | one row per transaction_guid | address_2 | varchar | Address line 2 | Suite 200 | Backend | LINK_AN_LOC_014 | `tht.address_2` |
+| analytics.transactions_data_source | one row per transaction_guid | city_name | varchar | City | Los Angeles | Backend | LINK_AN_LOC_015 | `tht.city_name` |
+| analytics.transactions_data_source | one row per transaction_guid | state_code | varchar | State code | CA | Backend | LINK_AN_LOC_016 | `tht.state_code` |
+| analytics.transactions_data_source | one row per transaction_guid | zip_code | varchar | ZIP code | 90028 | Backend | LINK_AN_LOC_017 | `tht.zip_code` |
+| analytics.transactions_data_source | one row per transaction_guid | country_code | varchar | Country code | US | Backend | LINK_AN_LOC_018 | `tht.country_code` |
+| analytics.transactions_data_source | one row per transaction_guid | tht_alternate_theater_phone_name | varchar | Alternate theater phone/name | Main Box Office | Derived | LINK_AN_LOC_019 | `tht.alternate_theater_phone_name` |
+| analytics.transactions_data_source | one row per transaction_guid | chain_specific_site_id | varchar | Chain specific site id | SITE_123 | Backend | LINK_AN_LOC_020 | `tht.chain_specific_site_id` |
+| analytics.transactions_data_source | one row per transaction_guid | paymentech_terminal_id | varchar | Paymentech terminal id | PT_123 | Third-party | LINK_AN_LOC_021 | `tht.paymentech_terminal_id` |
+| analytics.transactions_data_source | one row per transaction_guid | cybersource_terminal_id | varchar | Cybersource terminal id | CS_456 | Third-party | LINK_AN_LOC_022 | `tht.cybersource_terminal_id` |
+| analytics.transactions_data_source | one row per transaction_guid | screen_count | int | Screen count | 12 | Backend | LINK_AN_LOC_023 | `tht.screen_count` |
+| analytics.transactions_data_source | one row per transaction_guid | seat_count | int | Seat count | 1800 | Backend | LINK_AN_LOC_024 | `tht.seat_count` |
+| analytics.transactions_data_source | one row per transaction_guid | theater_time_zone_name | varchar | Theater timezone | America/Los_Angeles | Backend | LINK_AN_LOC_025 | `tht.theater_time_zone_name` |
+| analytics.transactions_data_source | one row per transaction_guid | dma_market_name | varchar | DMA market name | Los Angeles | Third-party | LINK_AN_LOC_026 | `dma.market_name` by zip join |
+| analytics.transactions_data_source | one row per transaction_guid | braintree_merchant_id | varchar | Braintree merchant id | bt_merchant_123 | Third-party | LINK_AN_LOC_027 | `tht.braintree_merchant_id` |
 
 ---
 
-## Quick Crosswalk (business-friendly)
+## Group 6: Attribution
 
-- **Group A (Direct Pass-Through):**  
-  The value is already prepared upstream and is directly projected from `public.fact_transaction` into analytics (sometimes with rename only).
+### Flow
 
-- **Group B (Derived in Analytics):**  
-  The value is calculated in analytics from public-layer fields using transformation logic like timezone conversion, date deltas, and CASE bucketization.
+```text
+tblTransaction + channel/affiliate + partner attrs
+→ raw_import_cache.transaction + transactionAttribute
+→ warehouse_loader.fact_transaction_base
+→ public.dim_affiliate + public.dim_channel + partner dims
+→ analytics.transactions_data_source
+```
 
-- **Group C (Dimension-Sourced):**  
-  Raw IDs are mapped to keys upstream, then analytics selects descriptive attributes from joined dimensions (`public.dim_*`).
+### Raw
 
-- **Group D (Raw-Enriched in Analytics):**  
-  The value follows the core pipeline but gets an extra enrichment in analytics via a targeted raw lookup join (`designatedMarketArea`).
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| raw_import_cache.transaction | one row per transaction_guid | Affiliate_id | int | Raw affiliate id | 132 | Backend | LINK_RAW_ATT_001 | Affiliate source id |
+| raw_import_cache.transaction | one row per transaction_guid | Channel_cd | varchar | Raw channel code | WAP | Backend | LINK_RAW_ATT_002 | Channel source code |
+| raw_import_cache.transactionAttribute | one row per tx attribute | partner-channel / partner-platform | varchar | Partner attrs | TMO / WEBVIEW | Third-party | LINK_RAW_ATT_003 | Partner attributes in transactionAttribute |
 
-- **Group E (Post-Insert Return Refresh):**  
-  The value is inserted through the standard path, then re-synced in a follow-up analytics update for return-window transactions.
+### Staging
 
-> Replace all `LINK_*` placeholders with final GitHub permalinks once line anchors are finalized.
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | affiliate_key | bigint | Affiliate key | 8123 | ETL | LINK_STG_ATT_001 | `da.affiliate_id = t.Affiliate_id` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | channel_key | bigint | Channel key | 291 | ETL | LINK_STG_ATT_002 | `dc.channel_id = t.Channel_cd` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | partner_channel_key | bigint | Partner channel key | 912 | ETL | LINK_STG_ATT_003 | Lookup from partner-channel attribute |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | partner_platform_key | bigint | Partner platform key | 117 | ETL | LINK_STG_ATT_004 | Lookup from partner-platform attribute |
+
+### Public
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| public.dim_affiliate | one row per affiliate_key | affiliate_name | varchar | Affiliate name | Fandango iOS App | Derived | LINK_PUB_ATT_001 | Friendly name |
+| public.dim_affiliate | one row per affiliate_key | affiliate_group_name | varchar | Affiliate group | Mobile App | Derived | LINK_PUB_ATT_002 | Grouping |
+| public.dim_affiliate | one row per affiliate_key | affiliate_category_name | varchar | Affiliate category | Owned & Operated | Derived | LINK_PUB_ATT_003 | Category |
+| public.dim_affiliate | one row per affiliate_key | affiliate_id | int | Affiliate id | 132 | Backend | LINK_PUB_ATT_004 | Id |
+| public.dim_channel | one row per channel_key | channel_group | varchar | Channel group | App | Derived | LINK_PUB_ATT_005 | Group label |
+| public.dim_channel | one row per channel_key | channel_name | varchar | Channel name | WAP | Backend | LINK_PUB_ATT_006 | Channel code/name |
+| public.dim_partner_channel | one row per partner_channel_key | partner_channel_id | varchar | Partner channel id | TMO | Third-party | LINK_PUB_ATT_007 | Partner channel code |
+| public.dim_partner_channel | one row per partner_channel_key | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party | LINK_PUB_ATT_008 | Partner display |
+| public.dim_partner_platform | one row per partner_platform_key | partner_platform_id | varchar | Partner platform id | WEBVIEW | Third-party | LINK_PUB_ATT_009 | Partner platform code |
+
+### Analytics
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| analytics.transactions_data_source | one row per transaction_guid | affiliate_name | varchar | Affiliate name | Fandango iOS App | Derived | LINK_AN_ATT_001 | `aff.affiliate_name` |
+| analytics.transactions_data_source | one row per transaction_guid | affiliate_group_name | varchar | Affiliate group | Mobile App | Derived | LINK_AN_ATT_002 | `aff.affiliate_group_name` |
+| analytics.transactions_data_source | one row per transaction_guid | affiliate_category_name | varchar | Affiliate category | Owned & Operated | Derived | LINK_AN_ATT_003 | `aff.affiliate_category_name` |
+| analytics.transactions_data_source | one row per transaction_guid | affiliate_id | int | Affiliate id | 132 | Backend | LINK_AN_ATT_004 | `aff.affiliate_id` |
+| analytics.transactions_data_source | one row per transaction_guid | channel | varchar | Channel group | App | Derived | LINK_AN_ATT_005 | `channel.channel_group` |
+| analytics.transactions_data_source | one row per transaction_guid | channel_ungrouped | varchar | Channel detail | WAP | Backend | LINK_AN_ATT_006 | `channel.channel_name` |
+| analytics.transactions_data_source | one row per transaction_guid | Affiliate Grouping | varchar | Affiliate grouping label | iPhone App | Derived | LINK_AN_ATT_007 | Large CASE on affiliate_id |
+| analytics.transactions_data_source | one row per transaction_guid | Affiliate Grouping - HIGH LEVEL BINS | varchar | High level bins | Fandango O&O | Derived | LINK_AN_ATT_008 | CASE on affiliate_id |
+| analytics.transactions_data_source | one row per transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party | LINK_AN_ATT_009 | `dpc.partner_channel_id` |
+| analytics.transactions_data_source | one row per transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party | LINK_AN_ATT_010 | `dpc.partner_display_name` |
+| analytics.transactions_data_source | one row per transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party | LINK_AN_ATT_011 | `dpp.partner_platform_id` |
+| analytics.transactions_data_source | one row per transaction_guid | partner_defined_data_value | varchar | Partner-defined payload | campaign=fall_promo | Backend | LINK_AN_ATT_012 | `ft.partner_defined_data_value` |
+
+---
+
+## Group 7: Types
+
+### Flow
+
+```text
+tblTransaction / committed indicators / property source
+→ raw_import_cache.transaction / transactionCommitted
+→ warehouse_loader.fact_transaction_base
+→ public.dim_transaction_type + dim_return_type + dim_property
+→ analytics.transactions_data_source
+```
+
+### Raw
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| raw_import_cache.transaction | one row per transaction_guid | Transaction_tp | varchar | Transaction type id/code | Purchase | Backend | LINK_RAW_TYP_001 | Source transaction type |
+| raw_import_cache.transaction | one row per transaction_guid | Property_nm | varchar | Property name | Fandango | Backend | LINK_RAW_TYP_002 | Source property |
+| raw_import_cache.transactionCommitted | one row per committed tx | Confirmation_cd | varchar | Confirmation code prefix | REF123 | Backend | LINK_RAW_TYP_003 | Used for return type mapping |
+
+### Staging
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_type_key | bigint | Transaction type key | 82 | ETL | LINK_STG_TYP_001 | Join `dtt.transaction_type_id = t.Transaction_tp` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | return_type_key | bigint | Return type key | 16 | ETL | LINK_STG_TYP_002 | Join by confirmation code prefix |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | property_key | bigint | Property key | 45 | ETL | LINK_STG_TYP_003 | Join from normalized property name |
+
+### Public
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| public.dim_transaction_type | one row per transaction_type_key | transaction_type_id | varchar | Transaction type id | 2 | Backend | LINK_PUB_TYP_001 | Conformed id |
+| public.dim_transaction_type | one row per transaction_type_key | transaction_type_name | varchar | Transaction type name | Purchase | Derived | LINK_PUB_TYP_002 | Label |
+| public.dim_return_type | one row per return_type_key | return_method | varchar | Return method | Self-service | Derived | LINK_PUB_TYP_003 | Label |
+| public.dim_return_type | one row per return_type_key | return_type_code | varchar | Return code | REF | Backend | LINK_PUB_TYP_004 | Code |
+| public.dim_return_type | one row per return_type_key | return_type_description | varchar | Return description | Customer cancellation | Derived | LINK_PUB_TYP_005 | Description |
+| public.dim_property | one row per property_key | property_id | varchar | Property id | Fandango USA | Backend | LINK_PUB_TYP_006 | Id |
+| public.dim_property | one row per property_key | property_group | varchar | Property group | Fandango | Derived | LINK_PUB_TYP_007 | Group label |
+
+### Analytics
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| analytics.transactions_data_source | one row per transaction_guid | transaction_type_id | varchar | Transaction type id | 2 | Backend | LINK_AN_TYP_001 | `tranxtype.transaction_type_id` |
+| analytics.transactions_data_source | one row per transaction_guid | transaction_type_name | varchar | Transaction type name | Purchase | Derived | LINK_AN_TYP_002 | `tranxtype.transaction_type_name` |
+| analytics.transactions_data_source | one row per transaction_guid | return_method | varchar | Return method | Self-service | Derived | LINK_AN_TYP_003 | `drt.return_method` |
+| analytics.transactions_data_source | one row per transaction_guid | return_type_code | varchar | Return type code | REF | Backend | LINK_AN_TYP_004 | `drt.return_type_code` |
+| analytics.transactions_data_source | one row per transaction_guid | return_type_description | varchar | Return type description | Customer cancellation | Derived | LINK_AN_TYP_005 | `drt.return_type_description` |
+| analytics.transactions_data_source | one row per transaction_guid | property_id | varchar | Property id | Fandango USA | Backend | LINK_AN_TYP_006 | `dp.property_id` |
+| analytics.transactions_data_source | one row per transaction_guid | property_group | varchar | Property group | Fandango | Derived | LINK_AN_TYP_007 | `dp.property_group` |
+
+---
+
+## Group 8: Flags
+
+### Flow
+
+```text
+transaction + committed + transactionAttribute + amenity mapping
+→ raw_import_cache.transaction / transactionCommitted / transactionAttribute / transactionPerformanceAttribute
+→ warehouse_loader.fact_transaction_base
+→ public.fact_transaction
+→ analytics.transactions_data_source
+```
+
+### Raw
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| raw_import_cache.transaction | one row per transaction_guid | Transaction_GUID | varchar | Transaction guid | ABC123 | Backend | LINK_RAW_FLG_001 | Primary key |
+| raw_import_cache.transaction | one row per transaction_guid | Test_bt | boolean | Raw test indicator | false | Backend | LINK_RAW_FLG_002 | Input to test logic |
+| raw_import_cache.transactionCommitted | one row per committed transaction | Confirmation_cd | varchar | POS confirmation code | CNF908812 | Backend | LINK_RAW_FLG_003 | Source POS confirmation |
+| raw_import_cache.transactionCommitted | one row per committed transaction | ReservedSeats_tx | varchar | Reserved seats text | A10,A11 | Backend | LINK_RAW_FLG_004 | Input to reserved seating fields |
+| raw_import_cache.transactionAttribute | one row per tx attribute | IsBuyNowOrder / NetworkToken / CharityName / PartnerDefinedData / FanClubStatus | varchar | Attribute flags/values | true | Backend | LINK_RAW_FLG_005 | Attribute sources for multiple flags |
+| raw_import_cache.transactionPerformanceAttribute | one row per tx-performance | Amenity_ids | varchar | Comma-delimited amenity ids | 1,3,7 | Backend | LINK_RAW_FLG_006 | Input for amenity mapping |
+
+### Staging
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | transaction_guid | varchar | Transaction guid | ABC123 | Backend | LINK_STG_FLG_001 | Direct pass-through |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_successful | boolean | Success flag | true | Derived | LINK_STG_FLG_002 | `tc exists and tr is null` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | point_of_sale_confirmation_code | varchar | POS confirmation code | CNF908812 | Backend | LINK_STG_FLG_003 | `tc.Confirmation_cd` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived | LINK_STG_FLG_004 | CASE on reserved seats text non-empty |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | reserved_seats | varchar | Reserved seats | A10,A11 | Backend | LINK_STG_FLG_005 | Trimmed reserved seats |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | POS_reference_cd | varchar | POS reference code | POSREF123 | Backend | LINK_STG_FLG_006 | `tc.POS_reference_cd` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_test | boolean | Test transaction flag | false | Derived | LINK_STG_FLG_007 | Multi-condition CASE (test bit, emails, etc.) |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived | LINK_STG_FLG_008 | CASE on FanClubStatus attribute |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_buynow | boolean | Buy now flag | false | Derived | LINK_STG_FLG_009 | CASE on IsBuyNowOrder attribute |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | charity_name | varchar | Charity name | Save The Arts | Backend | LINK_STG_FLG_010 | `ta3.value_tx` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | partner_defined_data_value | varchar | Partner-defined data | campaign=fall_promo | Backend | LINK_STG_FLG_011 | `ta4.value_tx` |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | network_token_usage | boolean | Network token usage | true | Derived | LINK_STG_FLG_012 | CASE lower(trim(value)) = 'true' |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_plf | boolean | PLF flag | true | Derived | LINK_STG_FLG_013 | Derived from amenity mapping aggregate |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_imax | boolean | IMAX flag | false | Derived | LINK_STG_FLG_014 | Derived from amenity mapping aggregate |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_3d | boolean | 3D flag | false | Derived | LINK_STG_FLG_015 | Derived from amenity mapping aggregate |
+| warehouse_loader.fact_transaction_base | one row per transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | true | Derived | LINK_STG_FLG_016 | Derived from amenity mapping aggregate |
+
+### Public
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| public.fact_transaction | one row per transaction_guid | transaction_guid | varchar | Transaction guid | ABC123 | Backend | LINK_PUB_FLG_001 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | is_successful | boolean | Success flag | true | Derived | LINK_PUB_FLG_002 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | point_of_sale_confirmation_code | varchar | POS confirmation code | CNF908812 | Backend | LINK_PUB_FLG_003 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived | LINK_PUB_FLG_004 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | reserved_seats | varchar | Reserved seats | A10,A11 | Backend | LINK_PUB_FLG_005 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | payment_types | varchar | Payment types | VISA | Backend | LINK_PUB_FLG_006 | Payment method labels |
+| public.fact_transaction | one row per transaction_guid | processor_order_ids | varchar | Processor order ids | ord_7891001 | Third-party | LINK_PUB_FLG_007 | External processor references |
+| public.fact_transaction | one row per transaction_guid | POS_reference_cd | varchar | POS reference code | POSREF123 | Backend | LINK_PUB_FLG_008 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | is_test | boolean | Test flag | false | Derived | LINK_PUB_FLG_009 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived | LINK_PUB_FLG_010 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | charity_name | varchar | Charity name | Save The Arts | Backend | LINK_PUB_FLG_011 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | partner_defined_data_value | varchar | Partner data value | campaign=fall_promo | Backend | LINK_PUB_FLG_012 | Pass-through |
+| public.fact_transaction | one row per transaction_guid | is_buynow | boolean | Buy now flag | false | Derived | LINK_PUB_FLG_013 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | network_token_usage | boolean/varchar | Network token usage | true | Derived | LINK_PUB_FLG_014 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | is_plf | boolean | PLF flag | true | Derived | LINK_PUB_FLG_015 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | is_imax | boolean | IMAX flag | false | Derived | LINK_PUB_FLG_016 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | is_3d | boolean | 3D flag | false | Derived | LINK_PUB_FLG_017 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | true | Derived | LINK_PUB_FLG_018 | Pass-through derived value |
+| public.fact_transaction | one row per transaction_guid | item_count | int | Item count | 2 | Derived | LINK_PUB_FLG_019 | Aggregated quantity |
+
+### Analytics
+
+| Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
+|---|---|---|---|---|---|---|---|---|
+| analytics.transactions_data_source | one row per transaction_guid | transaction_guid | varchar | Transaction guid | ABC123 | Backend | LINK_AN_FLG_001 | `ft.transaction_guid` |
+| analytics.transactions_data_source | one row per transaction_guid | is_successful | boolean | Success flag | true | Derived | LINK_AN_FLG_002 | `ft.is_successful` |
+| analytics.transactions_data_source | one row per transaction_guid | point_of_sale_confirmation_code | varchar | POS confirmation code | CNF908812 | Backend | LINK_AN_FLG_003 | `ft.point_of_sale_confirmation_code` |
+| analytics.transactions_data_source | one row per transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived | LINK_AN_FLG_004 | `ft.is_reserved_seating` |
+| analytics.transactions_data_source | one row per transaction_guid | reserved_seats | varchar | Reserved seats | A10,A11 | Backend | LINK_AN_FLG_005 | `ft.reserved_seats` |
+| analytics.transactions_data_source | one row per transaction_guid | payment_types | varchar | Payment type(s) | VISA | Backend | LINK_AN_FLG_006 | `ft.payment_types` |
+| analytics.transactions_data_source | one row per transaction_guid | processor_order_ids | varchar | Processor order ids | ord_7891001 | Third-party | LINK_AN_FLG_007 | `ft.processor_order_ids` |
+| analytics.transactions_data_source | one row per transaction_guid | item_qty | int | Item quantity | 2 | Derived | LINK_AN_FLG_008 | `ft.item_count AS item_qty` |
+| analytics.transactions_data_source | one row per transaction_guid | POS_reference_cd | varchar | POS reference code | POSREF123 | Backend | LINK_AN_FLG_009 | `ft.POS_reference_cd` |
+| analytics.transactions_data_source | one row per transaction_guid | is_test | boolean | Test flag | false | Derived | LINK_AN_FLG_010 | `ft.is_test` |
+| analytics.transactions_data_source | one row per transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived | LINK_AN_FLG_011 | `ft.is_fanclub` |
+| analytics.transactions_data_source | one row per transaction_guid | charity_name | varchar | Charity name | Save The Arts | Backend | LINK_AN_FLG_012 | `ft.charity_name` |
+| analytics.transactions_data_source | one row per transaction_guid | partner_defined_data_value | varchar | Partner-defined data | campaign=fall_promo | Backend | LINK_AN_FLG_013 | `ft.partner_defined_data_value` |
+| analytics.transactions_data_source | one row per transaction_guid | is_buynow | boolean | Buy-now flag | false | Derived | LINK_AN_FLG_014 | `ft.is_buynow` |
+| analytics.transactions_data_source | one row per transaction_guid | network_token_usage | boolean/varchar | Network token usage | true | Derived | LINK_AN_FLG_015 | `ft.network_token_usage` |
+| analytics.transactions_data_source | one row per transaction_guid | is_plf | boolean | PLF flag | true | Derived | LINK_AN_FLG_016 | `ft.is_plf` |
+| analytics.transactions_data_source | one row per transaction_guid | is_imax | boolean | IMAX flag | false | Derived | LINK_AN_FLG_017 | `ft.is_imax` |
+| analytics.transactions_data_source | one row per transaction_guid | is_3d | boolean | 3D flag | false | Derived | LINK_AN_FLG_018 | `ft.is_3d` |
+| analytics.transactions_data_source | one row per transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | true | Derived | LINK_AN_FLG_019 | `ft.is_higher_fee_amenity` |
+
+---
+
+## 96-Field Analytics Coverage Index
+
+Below is the canonical list from `analyticsTransactionsDataSource.sql`, all covered above:
+
+1. transaction_guid  
+2. is_successful  
+3. transaction_start_datetime_utc  
+4. transaction_start_datetime_los_angeles  
+5. transaction_commit_datetime_utc  
+6. transaction_commit_datetime_los_angeles  
+7. transaction_rollback_datetime_utc  
+8. transaction_rollback_datetime_los_angeles  
+9. transaction_end_datetime_utc  
+10. transaction_end_datetime_los_angeles  
+11. transaction_end_datetime_local  
+12. deltareleasetopurchasedate  
+13. deltareleasetoshowtimedate  
+14. deltapurchasetoshowtimedate  
+15. point_of_sale_confirmation_code  
+16. is_reserved_seating  
+17. reserved_seats  
+18. loyalty_code  
+19. performance_datetime_local  
+20. payment_types  
+21. processor_order_ids  
+22. affiliate_name  
+23. affiliate_group_name  
+24. affiliate_category_name  
+25. affiliate_id  
+26. channel  
+27. channel_ungrouped  
+28. filmid_child  
+29. filmname_child  
+30. filmid_parent  
+31. filmname_parent  
+32. releasedate  
+33. movie_tms_id  
+34. chainname  
+35. chainid  
+36. pos_vendor  
+37. awards_program_name  
+38. theater_id  
+39. theater_code  
+40. theater_name  
+41. pdi_id  
+42. pos_theater_id  
+43. latitude  
+44. longitude  
+45. point_of_sale_id  
+46. address_1  
+47. address_2  
+48. city_name  
+49. state_code  
+50. zip_code  
+51. country_code  
+52. tht_alternate_theater_phone_name  
+53. chain_specific_site_id  
+54. paymentech_terminal_id  
+55. cybersource_terminal_id  
+56. screen_count  
+57. seat_count  
+58. theater_time_zone_name  
+59. dma_market_name  
+60. transaction_type_id  
+61. transaction_type_name  
+62. user_agent_id  
+63. user_agent_description  
+64. purchase_funnel_id  
+65. purchase_funnel_name  
+66. return_method  
+67. return_type_code  
+68. return_type_description  
+69. Affiliate Grouping  
+70. Affiliate Grouping - HIGH LEVEL BINS  
+71. apps  
+72. platform  
+73. item_qty  
+74. gross_transaction_amount  
+75. sales_fee_amount  
+76. waived_sales_fee_ticket_count  
+77. waived_fanclub_fee_ticket_count  
+78. returned_amount  
+79. returned_fee_amount  
+80. ticket_sales_amount  
+81. waived_sales_fee_amount  
+82. waived_fanclub_fee_amount  
+83. surcharge_fee_amount  
+84. sales_fee_return_amount  
+85. surcharge_fee_return_amount  
+86. reservation_fee_return_amount  
+87. tax_return_amount  
+88. card_fee_return_amount  
+89. sales_fee_amount_for_returned_purchase  
+90. property_id  
+91. property_group  
+92. POS_reference_cd  
+93. braintree_merchant_id  
+94. taxable_sales_fee_amount  
+95. is_test  
+96. deviceType  
+97. is_fanclub  
+98. charity_amount  
+99. true_gross_transaction_amount  
+100. returned_charity_amount  
+101. charity_return_amount  
+102. charity_name  
+103. partner_defined_data_value  
+104. is_buynow  
+105. partner_channel  
+106. partner_display_name  
+107. partner_platform  
+108. network_token_usage  
+109. is_plf  
+110. is_imax  
+111. is_3d  
+112. is_higher_fee_amenity  
+
+> Note: The SQL insert list contains **112 columns** in the provided script. If your target is “96 fields,” that likely refers to an earlier table version. This document traces the currently provided SQL list in full.
+
+---
+
+## Link Placeholder Mapping
+
+Use these conventions:
+
+- `LINK_RAW_*` → raw extraction SQL in `dataeng_datawarehouse/.../extractTicketingTables/...`
+- `LINK_STG_*` → `factTransactionBase.sql`
+- `LINK_PUB_*` → public model build SQL
+- `LINK_AN_*` → `analyticsTransactionsDataSource.sql`
+
+Example permalink format:
+
+```text
+https://github.com/<owner>/<repo>/blob/<commit-or-branch>/<path>#L120-L145
+```
