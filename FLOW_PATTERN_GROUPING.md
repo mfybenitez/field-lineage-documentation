@@ -1,22 +1,4 @@
 # analytics.transactions_data_source — Flow-Pattern Grouped Lineage
-
-## Purpose
-
-This document groups fields by **technical lineage pattern** (not business theme), so every field in each group follows the same flow behavior.
-
-Primary analytics SQL source:
-- `fandango/jaws/main/src/main/resources/queries/populateTableQueries/analyticsTransactionsDataSource.sql`
-
-Staging backtrace source:
-- `fandango/jaws/main/src/main/resources/queries/populateTableQueries/factTransactionBase.sql`
-
-Raw extraction references (provided):
-- `warehouse_raw_import_cache_transaction.sql`
-- `warehouse_raw_import_cache_transactionCommitted.sql`
-- `warehouse_raw_import_cache_transactionItem.sql`
-- `warehouse_raw_import_cache_transactionPerformanceAttribute.sql`
-- `warehouse_raw_import_cache_trackingDeviceStatus.sql` (not used by current analytics query fields shown)
-
 ---
 
 ## Group A — Direct Pass-Through from `public.fact_transaction`
