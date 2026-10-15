@@ -1,5 +1,28 @@
 # analytics.transactions_data_source — Field Lineage (Grouped by Same Flow)
 
+
+## Source Label Definitions
+
+Use these labels consistently in the **Source** column:
+
+- **Backend**  
+  Field value originates from internal application/platform source systems (captured operational data, no transformation required beyond basic type/format handling).
+
+- **ETL**  
+  Field value is produced by pipeline processing steps (e.g., key resolution, normalization, conformance, load-time mapping) as part of data movement/modeling.
+
+- **Derived**  
+  Field value is calculated from one or more fields using explicit logic (e.g., `CASE`, `DATEDIFF`, `CONVERT_TIMEZONE`, arithmetic, boolean rules, post-insert refresh logic).
+
+- **Third-party**  
+  Field value originates from an external provider, partner, vendor, or external reference dataset (outside core internal backend systems).
+
+### Tie-breaker Rules (when more than one could apply)
+
+1. If the final value is **computed**, label as **Derived** (even if inputs are Backend/Third-party).
+2. If the value is a **pipeline-generated key/mapping artifact**, label as **ETL**.
+3. If the value is **directly passed through** from internal source tables, label as **Backend**.
+4. If the value is **directly passed through** from an external dataset/vendor feed, label as **Third-party**.
 ---
 
 <details open>
