@@ -1,11 +1,5 @@
 # analytics.transactions_data_source — Field Lineage (Grouped by Same Flow)
 
-> Structure notes:
-> - Each **Group** is collapsible
-> - Inside each group, **Raw / Staging / Public / Analytics** are collapsible
-> - Analytics rows are normalized to **one field per row**
-> - Keep replacing `LINK_*` placeholders with final permalinks
-
 ---
 
 <details open>
