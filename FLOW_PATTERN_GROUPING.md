@@ -459,7 +459,5 @@ Raw (return-related raw feeds)
   - Group C: 65  
   - Group D: 1  
   - Group E: 3
-- Missing columns: **0** *(assuming Group C supplemental fields match your final select list exactly)*
-- Extra columns: **0** *(same assumption)*
 
 > Replace all `LINK_*` placeholders with final GitHub permalinks once line anchors are finalized.
