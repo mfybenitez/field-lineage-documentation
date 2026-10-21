@@ -572,7 +572,7 @@ Raw (sales-tax feeds + requests)
 
 ---
 
-## Canonical Field ID Map (AN_001–AN_128, exact requested names)
+## Canonical Field ID Map (AN_001–AN_128)
 
 | Field ID | Column Name |
 |---|---|
