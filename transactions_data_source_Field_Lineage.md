@@ -1,4 +1,4 @@
-# analytics.transactions_data_source — Field Lineage (Grouped by Flow Pattern)
+# analytics.transactions_data_source Field Lineage (Grouped by Flow Pattern)
 
 This document maps all **128 fields** in `analytics.transactions_data_source` across:
 
