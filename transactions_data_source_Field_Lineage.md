@@ -48,7 +48,7 @@ Raw (raw_import_cache.transaction, transactionCommitted, transactionRolledBack, 
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|
-| raw_import_cache.transaction | 1 row / transaction_guid | Transaction_GUID | varchar(36) | Transaction identifier | 9F2A... | Backend | https://github.com/fandango/dataeng_datawarehouse/blob/2f510b5bd800f448682c5766f91a747ebc181e63/dags/ticketing/ticketing_transformation_half_hourly/sql/tier_2_facts/factTransactionBase.sql | Base transaction key. |
+| raw_import_cache.transaction | 1 row / transaction_guid | Transaction_GUID | varchar(36) | Transaction identifier | 9F2A... | Backend |  | Base transaction key. |
 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Start timestamp | 2026-10-01 16:10:00 | Backend | same | Source for start datetime. |
 | raw_import_cache.transactionCommitted | 1 row / transaction_guid | Create_dm | timestamp | Commit timestamp | 2026-10-01 16:11:05 | Backend | same | Source for commit/end logic. |
 | raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback timestamp | NULL | Backend | same | Source for rollback/end logic. |
@@ -59,7 +59,7 @@ Raw (raw_import_cache.transaction, transactionCommitted, transactionRolledBack, 
 | raw_import_cache.transaction | 1 row / transaction_guid | DeviceType_cd | varchar | Device type | Mobile | Backend | same | Source for devicetype. |
 | raw_import_cache.transaction | 1 row / transaction_guid | test_bt | boolean | Test marker | false | Backend | same | Input to is_test CASE logic. |
 | raw_import_cache.transactionPerformanceAttribute | 1 row / tx/perf | Performance_dm | timestamp | Performance local datetime | 2026-10-05 19:30:00 | Backend | same | Source for performance_datetime_local. |
-| raw_import_cache.transaction | 1 row / transaction_guid | ticketTaxRate_rt | decimal(6,4) | PR ticket tax rate | 11.5000 | Backend | https://github.com/fandango/dataeng_datawarehouse/blob/2f510b5bd800f448682c5766f91a747ebc181e63/sql/adhoc/ddls/CM-43970_pr_ticket_tax_columns_ddl.sql | Source for ticket_tax_rate. |
+| raw_import_cache.transaction | 1 row / transaction_guid | ticketTaxRate_rt | decimal(6,4) | PR ticket tax rate | 11.5000 | Backend |  | Source for ticket_tax_rate. |
 | raw_import_cache.transaction | 1 row / transaction_guid | ticketTaxTransaction_bt | boolean | PR ticket-tax flag | true | Backend | same | Source for is_ticket_tax_transaction. |
 | raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx (FanClubStatus) | varchar | Fanclub status attr | Active | Backend | https://github.com/fandango/dataeng_datawarehouse/blob/2f510b5bd800f448682c5766f91a747ebc181e63/dags/ticketing/ticketing_transformation_half_hourly/sql/tier_2_facts/factTransactionBase.sql | Input to is_fanclub. |
 | raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx (IsBuyNowOrder) | varchar | Buy-now attr | true | Backend | same | Input to is_buynow. |
