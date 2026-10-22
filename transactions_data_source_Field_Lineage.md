@@ -15,7 +15,7 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
   - `[derived]`
   - `[aggregate]`
   - `[conditional]`
-- **Consistent field IDs**: `AN_001` … `AN_128` (unique and stable).
+- **Consistent field IDs**: `AN_001` … `AN_128` (unique and stable; grouped tables use the canonical IDs listed below).
 - Grouping is by **flow pattern**, not business domain.
 
 ---
@@ -121,37 +121,37 @@ Raw (raw_import_cache.transaction, transactionCommitted, transactionRolledBack, 
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_001 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction id | 9F2A... | Backend |  | `[passthrough]` ft.transaction_guid |
-| AN_002 | analytics.transactions_data_source | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | `[passthrough]` ft.is_successful |
-| AN_003 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_utc | timestamp | Start UTC | 2026-10-01 16:10:00 | Backend |  | `[rename/cast]` ft.transaction_start_datetime |
-| AN_005 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_utc | timestamp | Commit UTC | 2026-10-01 16:11:05 | Backend |  | `[rename/cast]` ft.transaction_commit_datetime |
-| AN_007 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_utc | timestamp | Rollback UTC | NULL | Backend |  | `[rename/cast]` ft.transaction_rollback_datetime |
-| AN_009 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_utc | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | `[rename/cast]` ft.transaction_end_datetime |
-| AN_011 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local | 2026-10-01 09:11:05 | Derived |  | `[passthrough]` ft.transaction_end_datetime_local |
-| AN_015 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation | CNF908812 | Backend |  | `[passthrough]` |
-| AN_016 | analytics.transactions_data_source | 1 row / transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived |  | `[passthrough]` |
-| AN_017 | analytics.transactions_data_source | 1 row / transaction_guid | reserved_seats | varchar(100) | Reserved seats | A10,A11 | Backend |  | `[passthrough]` |
-| AN_018 | analytics.transactions_data_source | 1 row / transaction_guid | loyalty_code | varchar(40) | Loyalty code | LOY123 | Backend |  | `[passthrough]` |
-| AN_019 | analytics.transactions_data_source | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance local | 2026-10-05 19:30:00 | Backend |  | `[passthrough]` |
-| AN_091 | analytics.transactions_data_source | 1 row / transaction_guid | pos_reference_cd | varchar(40) | POS reference code | POSREF1 | Backend |  | `[passthrough]` |
-| AN_097 | analytics.transactions_data_source | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | `[passthrough]` |
-| AN_098 | analytics.transactions_data_source | 1 row / transaction_guid | devicetype | varchar | Device type | Mobile | Backend |  | `[passthrough]` |
-| AN_099 | analytics.transactions_data_source | 1 row / transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived |  | `[passthrough]` |
-| AN_104 | analytics.transactions_data_source | 1 row / transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived |  | `[passthrough]` |
-| AN_105 | analytics.transactions_data_source | 1 row / transaction_guid | charity_name | varchar(256) | Charity name | Save The Arts | Backend |  | `[passthrough]` |
-| AN_106 | analytics.transactions_data_source | 1 row / transaction_guid | partner_defined_data_value | varchar | Partner payload | campaign=fall | Third-party |  | `[passthrough]` |
-| AN_110 | analytics.transactions_data_source | 1 row / transaction_guid | network_token_usage | boolean | Network token usage | true | Derived |  | `[passthrough]` |
-| AN_112 | analytics.transactions_data_source | 1 row / transaction_guid | is_plf | boolean | PLF flag | false | Derived |  | `[passthrough]` |
-| AN_113 | analytics.transactions_data_source | 1 row / transaction_guid | is_imax | boolean | IMAX flag | false | Derived |  | `[passthrough]` |
-| AN_114 | analytics.transactions_data_source | 1 row / transaction_guid | is_3d | boolean | 3D flag | false | Derived |  | `[passthrough]` |
-| AN_115 | analytics.transactions_data_source | 1 row / transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | false | Derived |  | `[passthrough]` |
-| AN_121 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_rate | decimal(6,4) | PR ticket tax rate | 11.5000 | Backend |  | `[passthrough]` |
-| AN_122 | analytics.transactions_data_source | 1 row / transaction_guid | is_ticket_tax_transaction | boolean | PR tax txn flag | true | Derived |  | `[passthrough]` |
-| AN_116 | analytics.transactions_data_source | 1 row / transaction_guid | utm_source | varchar(255) | UTM source | google | Backend |  | `[passthrough]` |
-| AN_117 | analytics.transactions_data_source | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium | cpc | Backend |  | `[passthrough]` |
-| AN_118 | analytics.transactions_data_source | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign | fall_promo | Backend |  | `[passthrough]` |
-| AN_119 | analytics.transactions_data_source | 1 row / transaction_guid | utm_content | varchar(255) | UTM content | banner_a | Backend |  | `[passthrough]` |
-| AN_120 | analytics.transactions_data_source | 1 row / transaction_guid | utm_term | varchar(255) | UTM term | movie+tickets | Backend |  | `[passthrough]` |
+| AN_001 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction id | 9F2A... | Backend | `[passthrough]` ft.transaction_guid |
+| AN_002 | analytics.transactions_data_source | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived | `[passthrough]` ft.is_successful |
+| AN_003 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_utc | timestamp | Start UTC | 2026-10-01 16:10:00 | Backend | `[rename/cast]` ft.transaction_start_datetime |
+| AN_005 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_utc | timestamp | Commit UTC | 2026-10-01 16:11:05 | Backend | `[rename/cast]` ft.transaction_commit_datetime |
+| AN_007 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_utc | timestamp | Rollback UTC | NULL | Backend | `[rename/cast]` ft.transaction_rollback_datetime |
+| AN_009 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_utc | timestamp | End UTC | 2026-10-01 16:11:05 | Derived | `[rename/cast]` ft.transaction_end_datetime |
+| AN_011 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local | 2026-10-01 09:11:05 | Derived | `[passthrough]` ft.transaction_end_datetime_local |
+| AN_015 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation | CNF908812 | Backend | `[passthrough]` |
+| AN_016 | analytics.transactions_data_source | 1 row / transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived | `[passthrough]` |
+| AN_017 | analytics.transactions_data_source | 1 row / transaction_guid | reserved_seats | varchar(100) | Reserved seats | A10,A11 | Backend | `[passthrough]` |
+| AN_018 | analytics.transactions_data_source | 1 row / transaction_guid | loyalty_code | varchar(40) | Loyalty code | LOY123 | Backend | `[passthrough]` |
+| AN_019 | analytics.transactions_data_source | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance local | 2026-10-05 19:30:00 | Backend | `[passthrough]` |
+| AN_089 | analytics.transactions_data_source | 1 row / transaction_guid | pos_reference_cd | varchar(40) | POS reference code | POSREF1 | Backend | `[passthrough]` |
+| AN_096 | analytics.transactions_data_source | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived | `[passthrough]` |
+| AN_097 | analytics.transactions_data_source | 1 row / transaction_guid | devicetype | varchar | Device type | Mobile | Backend | `[passthrough]` |
+| AN_098 | analytics.transactions_data_source | 1 row / transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived | `[passthrough]` |
+| AN_105 | analytics.transactions_data_source | 1 row / transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived | `[passthrough]` |
+| AN_106 | analytics.transactions_data_source | 1 row / transaction_guid | charity_name | varchar(256) | Charity name | Save The Arts | Backend | `[passthrough]` |
+| AN_107 | analytics.transactions_data_source | 1 row / transaction_guid | partner_defined_data_value | varchar | Partner payload | campaign=fall | Third-party | `[passthrough]` |
+| AN_111 | analytics.transactions_data_source | 1 row / transaction_guid | network_token_usage | boolean | Network token usage | true | Derived | `[passthrough]` |
+| AN_113 | analytics.transactions_data_source | 1 row / transaction_guid | is_plf | boolean | PLF flag | false | Derived | `[passthrough]` |
+| AN_114 | analytics.transactions_data_source | 1 row / transaction_guid | is_imax | boolean | IMAX flag | false | Derived | `[passthrough]` |
+| AN_115 | analytics.transactions_data_source | 1 row / transaction_guid | is_3d | boolean | 3D flag | false | Derived | `[passthrough]` |
+| AN_116 | analytics.transactions_data_source | 1 row / transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | false | Derived | `[passthrough]` |
+| AN_122 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_rate | decimal(6,4) | PR ticket tax rate | 11.5000 | Backend | `[passthrough]` |
+| AN_123 | analytics.transactions_data_source | 1 row / transaction_guid | is_ticket_tax_transaction | boolean | PR tax txn flag | true | Derived | `[passthrough]` |
+| AN_117 | analytics.transactions_data_source | 1 row / transaction_guid | utm_source | varchar(255) | UTM source | google | Backend | `[passthrough]` |
+| AN_118 | analytics.transactions_data_source | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium | cpc | Backend | `[passthrough]` |
+| AN_119 | analytics.transactions_data_source | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign | fall_promo | Backend | `[passthrough]` |
+| AN_120 | analytics.transactions_data_source | 1 row / transaction_guid | utm_content | varchar(255) | UTM content | banner_a | Backend | `[passthrough]` |
+| AN_121 | analytics.transactions_data_source | 1 row / transaction_guid | utm_term | varchar(255) | UTM term | movie+tickets | Backend | `[passthrough]` |
 
 </details>
 </details>
@@ -206,19 +206,19 @@ Raw (raw_import_cache.transactionItem, raw_import_cache.transactionPayment)
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_020 | analytics.transactions_data_source | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | VISA | Derived |  | `[passthrough]` ft.payment_types |
-| AN_021 | analytics.transactions_data_source | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | ord_123 | Third-party |  | `[passthrough]` |
-| AN_073 | analytics.transactions_data_source | 1 row / transaction_guid | item_qty | int | Item qty | 2 | Derived |  | `[rename/cast]` ft.item_count AS item_qty |
-| AN_074 | analytics.transactions_data_source | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 42.50 | Derived |  | `[passthrough]` |
-| AN_075 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee | 5.00 | Derived |  | `[passthrough]` |
-| AN_076 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_ticket_count | numeric(19,4) | Waived sales fee ticket count | 0 | Derived |  | `[passthrough]` |
-| AN_101 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_ticket_count | numeric(19,4) | Waived fanclub fee ticket count | 0 | Derived |  | `[passthrough]` |
-| AN_079 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Derived |  | `[passthrough]` |
-| AN_080 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Waived sales fee amount | 0.00 | Derived |  | `[passthrough]` |
-| AN_100 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 0.00 | Derived |  | `[passthrough]` |
-| AN_081 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Surcharge fee | 1.50 | Derived |  | `[passthrough]` |
-| AN_102 | analytics.transactions_data_source | 1 row / transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Derived |  | `[passthrough]` |
-| AN_103 | analytics.transactions_data_source | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross including charity | 43.50 | Derived |  | `[passthrough]` |
+| AN_020 | analytics.transactions_data_source | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | VISA | Derived | `[passthrough]` ft.payment_types |
+| AN_021 | analytics.transactions_data_source | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | ord_123 | Third-party | `[passthrough]` |
+| AN_073 | analytics.transactions_data_source | 1 row / transaction_guid | item_qty | int | Item qty | 2 | Derived | `[rename/cast]` ft.item_count AS item_qty |
+| AN_074 | analytics.transactions_data_source | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 42.50 | Derived | `[passthrough]` |
+| AN_075 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee | 5.00 | Derived | `[passthrough]` |
+| AN_076 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_ticket_count | numeric(19,4) | Waived sales fee ticket count | 0 | Derived | `[passthrough]` |
+| AN_100 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_ticket_count | numeric(19,4) | Waived fanclub fee ticket count | 0 | Derived | `[passthrough]` |
+| AN_079 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Derived | `[passthrough]` |
+| AN_080 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Waived sales fee amount | 0.00 | Derived | `[passthrough]` |
+| AN_099 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 0.00 | Derived | `[passthrough]` |
+| AN_081 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Surcharge fee | 1.50 | Derived | `[passthrough]` |
+| AN_101 | analytics.transactions_data_source | 1 row / transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Derived | `[passthrough]` |
+| AN_102 | analytics.transactions_data_source | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross including charity | 43.50 | Derived | `[passthrough]` |
 
 </details>
 </details>
@@ -271,17 +271,17 @@ Raw (return/refund sources)
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_077 | analytics.transactions_data_source | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount | -42.50 | Derived |  | `[passthrough]` insert + post-insert sync update for returned_* fields |
-| AN_078 | analytics.transactions_data_source | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | -5.00 | Derived |  | `[passthrough]` + sync update |
-| AN_083 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Sales fee return amount | -5.00 | Derived |  | `[passthrough]` |
-| AN_084 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Surcharge fee return amount | -1.50 | Derived |  | `[passthrough]` |
-| AN_085 | analytics.transactions_data_source | 1 row / transaction_guid | reservation_fee_return_amount | numeric(19,4) | Reservation fee return amount | 0.00 | Derived |  | `[passthrough]` |
-| AN_086 | analytics.transactions_data_source | 1 row / transaction_guid | tax_return_amount | numeric(19,4) | Tax return amount | -2.10 | Derived |  | `[passthrough]` |
-| AN_087 | analytics.transactions_data_source | 1 row / transaction_guid | card_fee_return_amount | numeric(19,4) | Card fee return amount | -0.40 | Derived |  | `[passthrough]` |
-| AN_088 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee amount for returned purchase | 5.00 | Derived |  | `[passthrough]` |
-| AN_092 | analytics.transactions_data_source | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 5.00 | Derived |  | `[passthrough]` (public update logic affects refund rows) |
-| AN_107 | analytics.transactions_data_source | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | -1.00 | Derived |  | `[passthrough]` + sync update |
-| AN_108 | analytics.transactions_data_source | 1 row / transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | -1.00 | Derived |  | `[passthrough]` |
+| AN_077 | analytics.transactions_data_source | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount | -42.50 | Derived | `[passthrough]` insert + post-insert sync update for returned_* fields |
+| AN_078 | analytics.transactions_data_source | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | -5.00 | Derived | `[passthrough]` + sync update |
+| AN_082 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Sales fee return amount | -5.00 | Derived | `[passthrough]` |
+| AN_083 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Surcharge fee return amount | -1.50 | Derived | `[passthrough]` |
+| AN_084 | analytics.transactions_data_source | 1 row / transaction_guid | reservation_fee_return_amount | numeric(19,4) | Reservation fee return amount | 0.00 | Derived | `[passthrough]` |
+| AN_085 | analytics.transactions_data_source | 1 row / transaction_guid | tax_return_amount | numeric(19,4) | Tax return amount | -2.10 | Derived | `[passthrough]` |
+| AN_086 | analytics.transactions_data_source | 1 row / transaction_guid | card_fee_return_amount | numeric(19,4) | Card fee return amount | -0.40 | Derived | `[passthrough]` |
+| AN_087 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee amount for returned purchase | 5.00 | Derived | `[passthrough]` |
+| AN_091 | analytics.transactions_data_source | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 5.00 | Derived | `[passthrough]` (public update logic affects refund rows) |
+| AN_103 | analytics.transactions_data_source | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | -1.00 | Derived | `[passthrough]` + sync update |
+| AN_104 | analytics.transactions_data_source | 1 row / transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | -1.00 | Derived | `[passthrough]` |
 
 </details>
 </details>
@@ -336,61 +336,59 @@ Raw (business ids/codes in transaction + performance + attributes)
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_022 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | `[lookup]` aff.affiliate_name |
-| AN_023 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | `[lookup]` aff.affiliate_group_name |
-| AN_024 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | `[lookup]` aff.affiliate_category_name |
-| AN_025 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | `[lookup]` aff.affiliate_id |
-| AN_026 | analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend |  | `[rename/cast][lookup]` channel.channel_group |
-| AN_027 | analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | `[rename/cast][lookup]` channel.channel_name |
-| AN_028 | analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend |  | `[rename/cast][lookup]` film.movie_id |
-| AN_029 | analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend |  | `[rename/cast][lookup]` film.movie_title |
-| AN_030 | analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend |  | `[rename/cast][lookup]` film.movie_parent_id |
-| AN_031 | analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend |  | `[rename/cast][lookup]` film.movie_parent_title |
-| AN_032 | analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend |  | `[rename/cast][lookup]` film.movie_release_date |
-| AN_033 | analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party |  | `[lookup]` film.movie_tms_id |
-| AN_034 | analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend |  | `[rename/cast][lookup]` chain.chain_name |
-| AN_035 | analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend |  | `[rename/cast][lookup]` chain.chain_id |
-| AN_036 | analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party |  | `[rename/cast][lookup]` chain.point_of_sale_vendor |
-| AN_037 | analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend |  | `[lookup]` chain.awards_program_name |
-| AN_038 | analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend |  | `[lookup]` tht.theater_id |
-| AN_039 | analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend |  | `[lookup]` tht.theater_code |
-| AN_040 | analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend |  | `[lookup]` tht.theater_name |
-| AN_041 | analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend |  | `[lookup]` tht.pdi_id |
-| AN_042 | analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend |  | `[rename/cast][lookup]` tht.point_of_sale_theater_id |
-| AN_043 | analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | `[lookup]` tht.latitude |
-| AN_044 | analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | `[lookup]` tht.longitude |
-| AN_045 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend |  | `[lookup]` tht.point_of_sale_id |
-| AN_046 | analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | `[lookup]` tht.address_1 |
-| AN_047 | analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | `[lookup]` tht.address_2 |
-| AN_048 | analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | `[lookup]` tht.city_name |
-| AN_049 | analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | `[lookup]` tht.state_code |
-| AN_050 | analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | `[lookup]` tht.zip_code |
-| AN_051 | analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | `[lookup]` tht.country_code |
-| AN_052 | analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend |  | `[rename/cast][lookup]` tht.alternate_theater_phone_name |
-| AN_053 | analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend |  | `[lookup]` tht.chain_specific_site_id |
-| AN_054 | analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party |  | `[lookup]` tht.paymentech_terminal_id |
-| AN_055 | analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party |  | `[lookup]` tht.cybersource_terminal_id |
-| AN_056 | analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | `[lookup]` tht.screen_count |
-| AN_057 | analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | `[lookup]` tht.seat_count |
-| AN_058 | analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | `[lookup]` tht.theater_time_zone_name |
-| AN_060 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend |  | `[lookup]` tranxtype.transaction_type_id |
-| AN_061 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend |  | `[lookup]` tranxtype.transaction_type_name |
-| AN_062 | analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend |  | `[lookup]` dua.user_agent_id |
-| AN_063 | analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend |  | `[lookup]` dua.user_agent_description |
-| AN_064 | analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend |  | `[lookup]` dpf.purchase_funnel_id |
-| AN_065 | analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend |  | `[lookup]` dpf.purchase_funnel_name |
-| AN_066 | analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | `[lookup]` drt.return_method |
-| AN_067 | analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | `[lookup]` drt.return_type_code |
-| AN_068 | analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | `[lookup]` drt.return_type_description |
-| AN_090 | analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | `[lookup]` dp.property_id |
-| AN_111 | analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend |  | `[lookup]` dp.property_group |
-| AN_093 | analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party |  | `[lookup]` tht.braintree_merchant_id |
-| AN_107A | analytics.transactions_data_source | 1 row / transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party |  | `[rename/cast][lookup]` dpc.partner_channel_id |
-| AN_108A | analytics.transactions_data_source | 1 row / transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party |  | `[lookup]` dpc.partner_display_name |
-| AN_109A | analytics.transactions_data_source | 1 row / transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party |  | `[rename/cast][lookup]` dpp.partner_platform_id |
+| AN_022 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend | `[lookup]` aff.affiliate_name |
+| AN_023 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend | `[lookup]` aff.affiliate_group_name |
+| AN_024 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend | `[lookup]` aff.affiliate_category_name |
+| AN_025 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend | `[lookup]` aff.affiliate_id |
+| AN_026 | analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend | `[rename/cast][lookup]` channel.channel_group |
+| AN_027 | analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend | `[rename/cast][lookup]` channel.channel_name |
+| AN_028 | analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend | `[rename/cast][lookup]` film.movie_id |
+| AN_029 | analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend | `[rename/cast][lookup]` film.movie_title |
+| AN_030 | analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend | `[rename/cast][lookup]` film.movie_parent_id |
+| AN_031 | analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend | `[rename/cast][lookup]` film.movie_parent_title |
+| AN_032 | analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend | `[rename/cast][lookup]` film.movie_release_date |
+| AN_033 | analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party | `[lookup]` film.movie_tms_id |
+| AN_034 | analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend | `[rename/cast][lookup]` chain.chain_name |
+| AN_035 | analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend | `[rename/cast][lookup]` chain.chain_id |
+| AN_036 | analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party | `[rename/cast][lookup]` chain.point_of_sale_vendor |
+| AN_037 | analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend | `[lookup]` chain.awards_program_name |
+| AN_038 | analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend | `[lookup]` tht.theater_id |
+| AN_039 | analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend | `[lookup]` tht.theater_code |
+| AN_040 | analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend | `[lookup]` tht.theater_name |
+| AN_041 | analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend | `[lookup]` tht.pdi_id |
+| AN_042 | analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend | `[rename/cast][lookup]` tht.point_of_sale_theater_id |
+| AN_043 | analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend | `[lookup]` tht.latitude |
+| AN_044 | analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend | `[lookup]` tht.longitude |
+| AN_045 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend | `[lookup]` tht.point_of_sale_id |
+| AN_046 | analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend | `[lookup]` tht.address_1 |
+| AN_047 | analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend | `[lookup]` tht.address_2 |
+| AN_048 | analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend | `[lookup]` tht.city_name |
+| AN_049 | analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend | `[lookup]` tht.state_code |
+| AN_050 | analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend | `[lookup]` tht.zip_code |
+| AN_051 | analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend | `[lookup]` tht.country_code |
+| AN_052 | analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend | `[rename/cast][lookup]` tht.alternate_theater_phone_name |
+| AN_053 | analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend | `[lookup]` tht.chain_specific_site_id |
+| AN_054 | analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party | `[lookup]` tht.paymentech_terminal_id |
+| AN_055 | analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party | `[lookup]` tht.cybersource_terminal_id |
+| AN_056 | analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend | `[lookup]` tht.screen_count |
+| AN_057 | analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend | `[lookup]` tht.seat_count |
+| AN_058 | analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend | `[lookup]` tht.theater_time_zone_name |
+| AN_060 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend | `[lookup]` tranxtype.transaction_type_id |
+| AN_061 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend | `[lookup]` tranxtype.transaction_type_name |
+| AN_062 | analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend | `[lookup]` dua.user_agent_id |
+| AN_063 | analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend | `[lookup]` dua.user_agent_description |
+| AN_064 | analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend | `[lookup]` dpf.purchase_funnel_id |
+| AN_065 | analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend | `[lookup]` dpf.purchase_funnel_name |
+| AN_066 | analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend | `[lookup]` drt.return_method |
+| AN_067 | analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend | `[lookup]` drt.return_type_code |
+| AN_068 | analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend | `[lookup]` drt.return_type_description |
+| AN_088 | analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend | `[lookup]` dp.property_id |
+| AN_112 | analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend | `[lookup]` dp.property_group |
+| AN_090 | analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party | `[lookup]` tht.braintree_merchant_id |
+| AN_108 | analytics.transactions_data_source | 1 row / transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party | `[rename/cast][lookup]` dpc.partner_channel_id |
+| AN_109 | analytics.transactions_data_source | 1 row / transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party | `[lookup]` dpc.partner_display_name |
+| AN_110 | analytics.transactions_data_source | 1 row / transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party | `[rename/cast][lookup]` dpp.partner_platform_id |
 
-> Note: IDs `AN_107A/108A/109A` are temporary aliases to avoid collision with AN_107/108 already assigned in Group C.
-> In the normalized ID list below, these are mapped to official AN_107, AN_108, AN_109 for the exact field set.
 
 </details>
 </details>
@@ -443,17 +441,17 @@ Raw (transaction lifecycle + performance + affiliate/channel ids)
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_004 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived |  | `[derived]` CONVERT_TIMEZONE('US/Pacific', start_utc) |
-| AN_006 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived |  | `[derived]` timezone conversion |
-| AN_008 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived |  | `[derived]` timezone conversion |
-| AN_010 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived |  | `[derived]` timezone conversion |
-| AN_012 | analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetopurchasedate | int | Days release->purchase day | 17 | Derived |  | `[derived]` DATEDIFF(release_date, purchase_day_pacific) |
-| AN_013 | analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetoshowtimedate | int | Days release->showtime day | 21 | Derived |  | `[derived]` DATEDIFF(release_date, performance_day) |
-| AN_014 | analytics.transactions_data_source | 1 row / transaction_guid | deltapurchasetoshowtimedate | int | Days purchase day->showtime day | 4 | Derived |  | `[derived]` DATEDIFF(purchase_day_pacific, performance_day) |
-| AN_069 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate grouping | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | `[conditional]` CASE by affiliate_id list |
-| AN_070 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate grouping - high level bins | varchar(256) | High-level bucket | Fandango O&O | Derived |  | `[conditional]` CASE bins |
-| AN_071 | analytics.transactions_data_source | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  | `[conditional]` CASE by affiliate set |
-| AN_072 | analytics.transactions_data_source | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  | `[conditional]` CASE on affiliate + channel |
+| AN_004 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived | `[derived]` CONVERT_TIMEZONE('US/Pacific', start_utc) |
+| AN_006 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived | `[derived]` timezone conversion |
+| AN_008 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived | `[derived]` timezone conversion |
+| AN_010 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived | `[derived]` timezone conversion |
+| AN_012 | analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetopurchasedate | int | Days release->purchase day | 17 | Derived | `[derived]` DATEDIFF(release_date, purchase_day_pacific) |
+| AN_013 | analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetoshowtimedate | int | Days release->showtime day | 21 | Derived | `[derived]` DATEDIFF(release_date, performance_day) |
+| AN_014 | analytics.transactions_data_source | 1 row / transaction_guid | deltapurchasetoshowtimedate | int | Days purchase day->showtime day | 4 | Derived | `[derived]` DATEDIFF(purchase_day_pacific, performance_day) |
+| AN_069 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate grouping | varchar(256) | Detailed affiliate bucket | iPhone App | Derived | `[conditional]` CASE by affiliate_id list |
+| AN_070 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate grouping - high level bins | varchar(256) | High-level bucket | Fandango O&O | Derived | `[conditional]` CASE bins |
+| AN_071 | analytics.transactions_data_source | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived | `[conditional]` CASE by affiliate set |
+| AN_072 | analytics.transactions_data_source | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived | `[conditional]` CASE on affiliate + channel |
 
 </details>
 </details>
@@ -503,7 +501,7 @@ Raw (raw_import_cache.designatedMarketArea)
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_059 | analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | `[lookup]` dma.market_name via dma.zip_code = tht.zip_code |
+| AN_059 | analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party | `[lookup]` dma.market_name via dma.zip_code = tht.zip_code |
 
 </details>
 </details>
@@ -554,18 +552,16 @@ Raw (sales-tax feeds + requests)
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|
-| AN_094 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.sales_fee_tax_amount |
-| AN_095 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.returned_sales_fee_tax_amount |
-| AN_096 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.sales_fee_tax_return_amount |
-| AN_097A | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.sales_fee_tax_amount_for_returned_purchase |
-| AN_125 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived |  | `[rename/cast][lookup]` set from pr_ticket_tax_amount |
-| AN_126 | analytics.transactions_data_source | 1 row / transaction_guid | pre_tax_ticket_sales_amount | decimal(19,4) | Ticket sales amount before tax | 31.50 | Derived |  | `[derived]` ticket_sales_amount - coalesce(pr_ticket_tax_amount,0) |
-| AN_127 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.returned_ticket_tax_amount |
-| AN_128 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.ticket_tax_return_amount |
-| AN_129 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | decimal(19,4) | Ticket tax amount for returned purchase | 3.50 | Third-party/Derived |  | `[lookup]` update from #transactionSalesTax.ticket_tax_amount_for_returned_purchase |
+| AN_092 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.sales_fee_tax_amount |
+| AN_093 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.returned_sales_fee_tax_amount |
+| AN_094 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.sales_fee_tax_return_amount |
+| AN_095 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.sales_fee_tax_amount_for_returned_purchase |
+| AN_124 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived | `[rename/cast][lookup]` set from pr_ticket_tax_amount |
+| AN_125 | analytics.transactions_data_source | 1 row / transaction_guid | pre_tax_ticket_sales_amount | decimal(19,4) | Ticket sales amount before tax | 31.50 | Derived | `[derived]` ticket_sales_amount - coalesce(pr_ticket_tax_amount,0) |
+| AN_126 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.returned_ticket_tax_amount |
+| AN_127 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.ticket_tax_return_amount |
+| AN_128 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | decimal(19,4) | Ticket tax amount for returned purchase | 3.50 | Third-party/Derived | `[lookup]` update from #transactionSalesTax.ticket_tax_amount_for_returned_purchase |
 
-> Note: IDs `AN_097A`, `AN_129` are temporary aliases in this section to avoid earlier collisions in draft numbering.
-> Final canonical mapping appears below (AN_001–AN_128 exact set).
 
 </details>
 </details>
@@ -718,3 +714,4 @@ Raw (sales-tax feeds + requests)
 - **Group G:** post-insert sales-tax enrichment from salestax pipeline.
 
 ---
+
