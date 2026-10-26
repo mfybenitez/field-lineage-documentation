@@ -17,7 +17,7 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
   - `[conditional]` — chooses or adjusts a value based on a condition, such as a `CASE` rule.
   - Tags can be combined when a transformation does more than one of these things.
 - **Consistent field IDs**: `AN_001` … `AN_128` for analytics fields; `RAW_###`, `STG_###`, and `PUB_###` uniquely identify Raw, Staging, and Public rows.
-- **Previous Stage ID(s)** list only IDs from the immediately preceding stage. Additional direct inputs from another stage are called out in Logic Explanation.
+- **Previous Stage ID(s)** point to the immediately preceding node in that field's flow, not necessarily the preceding layer section. A flow can alternate between `public` and `warehouse_loader` tables, so a predecessor may appear later in the document's layer-grouped tables. Additional direct inputs from another branch are called out in Logic Explanation.
 - Grouping is by **flow pattern**, not business domain.
 
 ---
