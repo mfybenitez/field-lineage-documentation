@@ -17,7 +17,7 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
   - `[conditional]` — chooses or adjusts a value based on a condition, such as a `CASE` rule.
   - Tags can be combined when a transformation does more than one of these things.
 - **Consistent field IDs**: `AN_001` … `AN_128` for analytics fields; `RAW_###`, `STG_###`, and `PUB_###` uniquely identify Raw, Staging, and Public rows.
-- **Previous Stage ID(s)** point to the immediately preceding node in that field's flow, not necessarily the preceding layer section. A flow can alternate between `public` and `warehouse_loader` tables, so a predecessor may appear later in the document's layer-grouped tables. Additional direct inputs from another branch are called out in Logic Explanation.
+- **Previous Stage ID(s)** in the Staging rows follow the transaction-level Raw → Stage → Public → Analytics overview. When a staging aggregate reads a lower-grain `public` fact internally, its raw/stage ancestry is shown in the ID cell and the physical `public` input is named in Logic Explanation. Public and Analytics rows continue to point to their immediate preceding lineage IDs.
 - Grouping is by **flow pattern**, not business domain.
 
 ---
@@ -166,12 +166,14 @@ Raw (transaction, transactionCommitted, transactionRolledBack, transactionCustom
 
 ### Flow Diagram
 ```text
-Raw (transactionItem, transactionPayment)
--> Staging (fact_transaction_base)
--> Public (fact_transaction_item, fact_payment, payment/item dimensions)
--> Staging (fact_transaction_item_aggregate, fact_payment_aggregate)
--> Public (fact_transaction)
--> Analytics (analytics.transactions_data_source)
+Raw-origin payment and item data
+  -> Stage: transaction-level aggregates
+     (warehouse_loader.fact_payment_aggregate,
+      warehouse_loader.fact_transaction_item_aggregate)
+  -> Public: transaction-level fact (public.fact_transaction)
+  -> analytics.transactions_data_source
+
+Side note: the aggregates read row-level public payment/item facts and dimensions, which trace back to raw inputs; details are listed below.
 ```
 
 <details>
@@ -190,8 +192,8 @@ Raw (transactionItem, transactionPayment)
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|---|
-| STG_024 | PUB_020 | warehouse_loader.fact_payment_aggregate | 1 row / transaction_guid | payment_types, processor_order_ids, gross_transaction_amount | mixed | Payment aggregates at tx grain | — | Derived/Third-party |  | `[aggregate]` Groups public.fact_payment by transaction; joins public.dim_payment_instrument and public.dim_payment_type for payment type labels. |
-| STG_025 | PUB_021 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_count, item_sales_amount, item_fees_amount, item_surcharge_fee_amount, item_waived_sales_fee_amount, fanclub_waived_sales_fee_amount, fee_waiver_item_count, fanclub_fee_waiver_item_count, item_taxable_sales_fee_amount, charity_amount | numeric | Item aggregates at tx grain | — | Derived |  | `[aggregate]` Groups public.fact_transaction_item by transaction; uses public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory for item labels. Donation amounts feed charity separately; subscriptions are excluded from item_count. |
+| STG_024 | RAW_022 | warehouse_loader.fact_payment_aggregate | 1 row / transaction_guid | payment_types, processor_order_ids, gross_transaction_amount | mixed | Payment aggregates at tx grain | — | Derived/Third-party |  | `[aggregate]` Transaction-level rollup of raw payment lineage. SQL reads public.fact_payment and joins public.dim_payment_instrument and public.dim_payment_type for payment type labels. |
+| STG_025 | RAW_023, RAW_035 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_count, item_sales_amount, item_fees_amount, item_surcharge_fee_amount, item_waived_sales_fee_amount, fanclub_waived_sales_fee_amount, fee_waiver_item_count, fanclub_fee_waiver_item_count, item_taxable_sales_fee_amount, charity_amount | numeric | Item aggregates at tx grain | — | Derived |  | `[aggregate]` Transaction-level rollup of raw item lineage. SQL reads public.fact_transaction_item and uses public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory for item labels. Donation amounts feed charity separately; subscriptions are excluded from item_count. |
 
 </details>
 
@@ -238,12 +240,12 @@ Raw (transactionItem, transactionPayment)
 
 ### Flow Diagram
 ```text
-Raw (refund)
--> Staging (fact_transaction_base, fact_payment_aggregate, fact_transaction_item_aggregate)
--> Public (fact_return)
--> Staging (fact_return_aggregate, #fact_return_lookup)
--> Public (fact_transaction updates)
--> Analytics (insert + returned_* sync update)
+Raw-origin refund data
+  -> Stage: transaction-level return calculations
+  -> Public: transaction-level fact updates (public.fact_transaction)
+  -> Analytics (analytics.transactions_data_source)
+
+Side note: public.fact_return and related dimensions support the calculations; they trace the refund data to the transaction-level updates. Details are listed below.
 ```
 
 <details>
@@ -260,8 +262,8 @@ Raw (refund)
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|---|
-| STG_026 | PUB_022 | warehouse_loader.fact_return_aggregate | 1 row / purchase_transaction_guid | returned_ticket_amount, returned_fee_amount, returned_charity_amount | numeric | Purchase-side returned rollups | — | Derived |  | `[aggregate]` Sums successful public.fact_return rows by purchase_transaction_guid. |
-| STG_027 | PUB_022 | #fact_return_lookup (temp) | 1 row / return_transaction_guid | return_* + purchase_transaction_guid | mixed | Return lookup set in run window | — | ETL |  | `[lookup]` Copies return details from public.fact_return into #fact_return_lookup for refund-row updates. |
+| STG_026 | RAW_024 | warehouse_loader.fact_return_aggregate | 1 row / purchase_transaction_guid | returned_ticket_amount, returned_fee_amount, returned_charity_amount | numeric | Purchase-side returned rollups | — | Derived |  | `[aggregate]` Transaction-level rollup of raw refund lineage. The ETL sums successful public.fact_return rows by purchase_transaction_guid. |
+| STG_027 | RAW_024 | #fact_return_lookup (temp) | 1 row / return_transaction_guid | return_* + purchase_transaction_guid | mixed | Return lookup set in run window | — | ETL |  | `[lookup]` Stages raw refund lineage for refund-row updates by copying return details from public.fact_return into #fact_return_lookup. |
 
 </details>
 
@@ -304,10 +306,12 @@ Raw (refund)
 
 ### Flow Diagram
 ```text
-Raw (business ids/codes in transaction + performance + attributes)
--> Staging (surrogate key resolution in fact_transaction_base)
--> Public (fact_transaction keys + dim tables)
--> Analytics (dimension attribute projection)
+Raw transaction identifiers and codes
+  -> Stage: transaction keys (warehouse_loader.fact_transaction_base)
+  -> Public: transaction-level fact (public.fact_transaction)
+  -> Analytics: transaction-level dimension attributes
+
+Side note: public dimensions supply descriptive lookup values; details are listed below.
 ```
 
 <details>
@@ -412,10 +416,12 @@ Raw (business ids/codes in transaction + performance + attributes)
 
 ### Flow Diagram
 ```text
-Raw (transaction lifecycle + performance + affiliate/channel ids)
--> Staging (fact_transaction_base)
--> Public (fact_transaction + dim_movie + dim_affiliate + dim_channel)
--> Analytics (CONVERT_TIMEZONE / DATEDIFF / CASE)
+Raw transaction, lifecycle, and performance inputs
+  -> Stage: transaction base (warehouse_loader.fact_transaction_base)
+  -> Public: transaction-level fact (public.fact_transaction)
+  -> Analytics: transaction-level time and category calculations
+
+Side note: public dimensions supply lookup attributes; details are listed below.
 ```
 
 <details>
@@ -475,10 +481,12 @@ Raw (transaction lifecycle + performance + affiliate/channel ids)
 
 ### Flow Diagram
 ```text
-Raw (raw_import_cache.designatedMarketArea)
--> Staging (fact_transaction_base theater_key path)
--> Public (dim_theater.zip_code)
--> Analytics (zip join to designatedMarketArea)
+Raw transaction and theater identifiers
+  -> Stage: transaction base (warehouse_loader.fact_transaction_base)
+  -> Public: transaction-level fact (public.fact_transaction)
+  -> Analytics: transaction-level DMA enrichment
+
+Side note: ZIP-to-DMA lookup data supplies the enrichment; details are listed below.
 ```
 
 <details>
@@ -526,10 +534,11 @@ Raw (raw_import_cache.designatedMarketArea)
 ### Flow Diagram
 ```text
 Raw (data_lake.salestaxtransaction)
--> Staging (raw_import_cache.stgsalestaxtransaction)
--> Public (public.fact_sales_fee_tax)
--> Analytics (INSERT join to public.fact_sales_fee_tax)
-Public -> Staging refresh snapshot (#transactionSalesTax) -> Analytics (lag-window update)
+  -> Stage (raw_import_cache.stgsalestaxtransaction)
+  -> Public: transaction-level tax fact (public.fact_sales_fee_tax)
+  -> Analytics (analytics.transactions_data_source)
+
+Side note: recent-window refreshes use a temporary snapshot.
 ```
 
 <details>
@@ -547,7 +556,7 @@ Public -> Staging refresh snapshot (#transactionSalesTax) -> Analytics (lag-wind
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 |---|---|---|---|---|---|---|---|---|---|---|
 | STG_031 | RAW_034 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | document_number, lineitem_number, total_lineitem_tax, tax area/rate and status fields | mixed | Raw sales-tax rows staged before fact construction | — | ETL |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| STG_032 | PUB_019 | temp #transactionSalesTax | 1 row / transaction_guid | sales_fee_tax_amount, returned_sales_fee_tax_amount, sales_fee_tax_return_amount, sales_fee_tax_amount_for_returned_purchase, pr_ticket_tax_amount, returned_ticket_tax_amount, ticket_tax_return_amount, ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax values staged for update | — | ETL |  | `[lookup]` Copies recent public.fact_sales_fee_tax rows into #transactionSalesTax for the delayed analytics refresh. |
+| STG_032 | STG_031 | temp #transactionSalesTax | 1 row / transaction_guid | sales_fee_tax_amount, returned_sales_fee_tax_amount, sales_fee_tax_return_amount, sales_fee_tax_amount_for_returned_purchase, pr_ticket_tax_amount, returned_ticket_tax_amount, ticket_tax_return_amount, ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax values staged for update | — | ETL |  | `[lookup]` Stages transaction-level tax lineage for delayed analytics refresh. The SQL snapshot is copied from recent public.fact_sales_fee_tax rows. |
 
 </details>
 
