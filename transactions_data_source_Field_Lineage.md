@@ -16,8 +16,8 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
   - `[aggregate]` — combines multiple rows into a summarized result, such as a sum or count.
   - `[conditional]` — chooses or adjusts a value based on a condition, such as a `CASE` rule.
   - Tags can be combined when a transformation does more than one of these things.
-- **Consistent field IDs**: `AN_001` … `AN_128` for analytics fields; `RAW_###`, `STG_###`, and `PUB_###` uniquely identify Raw, Staging, and Public rows.
-- **Previous Stage ID(s)** in the Staging rows follow the transaction-level Raw → Stage → Public → Analytics overview. When a staging aggregate reads a lower-grain `public` fact internally, its raw/stage ancestry is shown in the ID cell and the physical `public` input is named in Logic Explanation. Public and Analytics rows continue to point to their immediate preceding lineage IDs.
+- **Consistent field IDs**: `AN_001` … `AN_128` identify analytics fields; `RAW_###`, `STG_###`, and `PUB_###` identify Raw, Staging, and Public lineage fields. When a field has multiple upstream sources and is split across rows, its Field ID repeats to identify the same output field.
+- **Previous Stage ID(s)** in the Staging rows follow the transaction-level Raw → Stage → Public → Analytics overview. When a staging aggregate reads a lower-grain `public` fact internally, its raw/stage ancestry is shown in the ID cell and the physical `public` input is named in Logic Explanation. Public and Analytics rows continue to point to their immediate preceding lineage IDs. For Groups A and B, a field that uses multiple upstream fields is shown in repeated rows with the same Field ID and one Previous Stage ID per row; read those rows together as one output field.
 - Grouping is by **flow pattern**, not business domain.
 
 ---
@@ -49,7 +49,7 @@ Raw (transaction, transactionCommitted, transactionRolledBack, transactionCustom
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_001 | raw_import_cache.transaction | 1 row / transaction_guid | Transaction_GUID | varchar(36) | Transaction identifier | 9F2A... | Backend |  | Base transaction key. |
 | RAW_002 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Start timestamp | 2026-10-01 16:10:00 | Backend |  | Source for start datetime. |
 | RAW_003 | raw_import_cache.transactionCommitted | 1 row / transaction_guid | Create_dm | timestamp | Commit timestamp | 2026-10-01 16:11:05 | Backend |  | Source for commit/end logic. |
@@ -78,20 +78,26 @@ Raw (transaction, transactionCommitted, transactionRolledBack, transactionCustom
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_001 | RAW_001 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction id | 9F2A... | Backend |  | `[passthrough]` Copies transaction_guid from raw_import_cache.transaction. |
-| STG_002 | RAW_003, RAW_004 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | `[conditional]` Sets success when raw_import_cache.transactionCommitted has a row and raw_import_cache.transactionRolledBack does not. |
+| STG_002 | RAW_003 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | `[conditional]` Each source row contributes to this one output flag; read the rows together. Sets success when raw_import_cache.transactionCommitted has a row and raw_import_cache.transactionRolledBack does not. |
+| STG_002 | RAW_004 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | `[conditional]` Each source row contributes to this one output flag; read the rows together. Sets success when raw_import_cache.transactionCommitted has a row and raw_import_cache.transactionRolledBack does not. |
 | STG_003 | RAW_002 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_start_datetime | timestamp | Start UTC | 2026-10-01 16:10:00 | Backend |  | `[rename/cast]` Casts raw_import_cache.transaction.Create_dm as transaction_start_datetime. |
 | STG_004 | RAW_003 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_commit_datetime | timestamp | Commit UTC | 2026-10-01 16:11:05 | Backend |  | `[rename/cast]` Copies Create_dm from raw_import_cache.transactionCommitted. |
 | STG_005 | RAW_004 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_rollback_datetime | timestamp | Rollback UTC | NULL | Backend |  | `[rename/cast]` Copies Create_dm from raw_import_cache.transactionRolledBack. |
-| STG_006 | RAW_002, RAW_003, RAW_004 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | `[conditional]` Chooses the latest available time from raw_import_cache.transaction, raw_import_cache.transactionCommitted, and raw_import_cache.transactionRolledBack; falls back to transaction start. |
+| STG_006 | RAW_002 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | `[conditional]` Each source row contributes a candidate timestamp; read the rows together to determine the latest available time. Chooses the latest available time from raw_import_cache.transaction, raw_import_cache.transactionCommitted, and raw_import_cache.transactionRolledBack; falls back to transaction start. |
+| STG_006 | RAW_003 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | `[conditional]` Each source row contributes a candidate timestamp; read the rows together to determine the latest available time. Chooses the latest available time from raw_import_cache.transaction, raw_import_cache.transactionCommitted, and raw_import_cache.transactionRolledBack; falls back to transaction start. |
+| STG_006 | RAW_004 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | `[conditional]` Each source row contributes a candidate timestamp; read the rows together to determine the latest available time. Chooses the latest available time from raw_import_cache.transaction, raw_import_cache.transactionCommitted, and raw_import_cache.transactionRolledBack; falls back to transaction start. |
 | STG_007 | RAW_005 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | performance_datetime_local | timestamp | Local performance datetime | 2026-10-05 19:30:00 | Backend |  | `[passthrough]` Copies Performance_dm from raw_import_cache.transactionPerformanceAttribute. |
 | STG_008 | RAW_006 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation | CNF908812 | Backend |  | `[rename/cast]` Copies Confirmation_cd from raw_import_cache.transactionCommitted. |
 | STG_009 | RAW_007 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived |  | `[conditional]` Sets the seating flag when ReservedSeats_tx from raw_import_cache.transactionCommitted is nonblank. |
 | STG_010 | RAW_007 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | reserved_seats | varchar(100) | Reserved seats | A10,A11 | Backend |  | `[conditional]` Trims ReservedSeats_tx from raw_import_cache.transactionCommitted; empty text becomes NULL. |
 | STG_011 | RAW_008 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | loyalty_code | varchar(40) | Loyalty code | LOY123 | Backend |  | `[conditional]` Trims Loyalty_cd from raw_import_cache.transactionCommitted; empty text becomes NULL. |
 | STG_012 | RAW_009 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | POS_reference_cd | varchar(40) | POS ref code | POSREF1 | Backend |  | `[passthrough]` Copies POS_reference_cd from raw_import_cache.transactionCommitted. |
-| STG_013 | RAW_010, RAW_011, RAW_025, RAW_026 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | `[conditional]` Derives is_test from raw_import_cache.transaction, raw_import_cache.transactionCustomer, raw_import_cache.testEmailAddress, and raw_import_cache.testTransactionEmailList; also checks public.dim_theater and public.dim_transaction_type. |
+| STG_013 | RAW_010 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | `[conditional]` Each source row contributes to the test-transaction check; read the rows together. Derives is_test from raw_import_cache.transaction, raw_import_cache.transactionCustomer, raw_import_cache.testEmailAddress, and raw_import_cache.testTransactionEmailList; also checks public.dim_theater and public.dim_transaction_type. |
+| STG_013 | RAW_011 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | `[conditional]` Each source row contributes to the test-transaction check; read the rows together. Derives is_test from raw_import_cache.transaction, raw_import_cache.transactionCustomer, raw_import_cache.testEmailAddress, and raw_import_cache.testTransactionEmailList; also checks public.dim_theater and public.dim_transaction_type. |
+| STG_013 | RAW_025 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | `[conditional]` Each source row contributes to the test-transaction check; read the rows together. Derives is_test from raw_import_cache.transaction, raw_import_cache.transactionCustomer, raw_import_cache.testEmailAddress, and raw_import_cache.testTransactionEmailList; also checks public.dim_theater and public.dim_transaction_type. |
+| STG_013 | RAW_026 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | `[conditional]` Each source row contributes to the test-transaction check; read the rows together. Derives is_test from raw_import_cache.transaction, raw_import_cache.transactionCustomer, raw_import_cache.testEmailAddress, and raw_import_cache.testTransactionEmailList; also checks public.dim_theater and public.dim_transaction_type. |
 | STG_014 | RAW_012 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | deviceType | varchar | Device type | Mobile | Backend |  | `[rename/cast]` Copies DeviceType_cd from raw_import_cache.transaction as deviceType. |
 | STG_015 | RAW_013 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived |  | `[conditional]` Maps listed active FanClubStatus values from raw_import_cache.transactionAttribute to true. |
 | STG_016 | RAW_014 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived |  | `[conditional]` Sets the flag when IsBuyNowOrder in raw_import_cache.transactionAttribute is true. |
@@ -109,13 +115,32 @@ Raw (transaction, transactionCommitted, transactionRolledBack, transactionCustom
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
-| PUB_001 | STG_001, STG_002, STG_003, STG_004, STG_005, STG_006 | public.fact_transaction | 1 row / transaction_guid | transaction_guid, is_successful, transaction_start_datetime, transaction_commit_datetime, transaction_rollback_datetime, transaction_end_datetime | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
-| PUB_002 | STG_006, STG_028 | public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local datetime | 2026-10-01 09:11:05 | Derived |  | `[derived]` Converts warehouse_loader.fact_transaction_base.transaction_end_datetime using public.dim_theater.theater_time_zone_name. |
-| PUB_003 | STG_008, STG_009, STG_010, STG_011, STG_007, STG_012 | public.fact_transaction | 1 row / transaction_guid | point_of_sale_confirmation_code, is_reserved_seating, reserved_seats, loyalty_code, performance_datetime_local, POS_reference_cd | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
-| PUB_004 | STG_013, STG_014, STG_015, STG_016, STG_017, STG_018, STG_019 | public.fact_transaction | 1 row / transaction_guid | is_test, deviceType, is_fanclub, is_buynow, charity_name, partner_defined_data_value, network_token_usage | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PUB_001 | STG_001 | public.fact_transaction | 1 row / transaction_guid | transaction_guid | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
+| PUB_001 | STG_002 | public.fact_transaction | 1 row / transaction_guid | is_successful | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
+| PUB_001 | STG_003 | public.fact_transaction | 1 row / transaction_guid | transaction_start_datetime | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
+| PUB_001 | STG_004 | public.fact_transaction | 1 row / transaction_guid | transaction_commit_datetime | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
+| PUB_001 | STG_005 | public.fact_transaction | 1 row / transaction_guid | transaction_rollback_datetime | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
+| PUB_001 | STG_006 | public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | mixed | Lifecycle fields | — | Backend/Derived |  | `[passthrough]` Copies lifecycle fields from warehouse_loader.fact_transaction_base into public.fact_transaction. |
+| PUB_002 | STG_006 | public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local datetime | 2026-10-01 09:11:05 | Derived |  | `[derived]` Converts warehouse_loader.fact_transaction_base.transaction_end_datetime using public.dim_theater.theater_time_zone_name. |
+| PUB_002 | STG_028 | public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local datetime | 2026-10-01 09:11:05 | Derived |  | `[derived]` Converts warehouse_loader.fact_transaction_base.transaction_end_datetime using public.dim_theater.theater_time_zone_name. |
+| PUB_003 | STG_008 | public.fact_transaction | 1 row / transaction_guid | point_of_sale_confirmation_code | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
+| PUB_003 | STG_009 | public.fact_transaction | 1 row / transaction_guid | is_reserved_seating | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
+| PUB_003 | STG_010 | public.fact_transaction | 1 row / transaction_guid | reserved_seats | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
+| PUB_003 | STG_011 | public.fact_transaction | 1 row / transaction_guid | loyalty_code | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
+| PUB_003 | STG_007 | public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
+| PUB_003 | STG_012 | public.fact_transaction | 1 row / transaction_guid | POS_reference_cd | mixed | Core transaction attrs | — | Backend/Derived |  | `[passthrough]` Copies confirmation, seating, loyalty, and performance fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_013 | public.fact_transaction | 1 row / transaction_guid | is_test | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_014 | public.fact_transaction | 1 row / transaction_guid | deviceType | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_015 | public.fact_transaction | 1 row / transaction_guid | is_fanclub | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_016 | public.fact_transaction | 1 row / transaction_guid | is_buynow | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_017 | public.fact_transaction | 1 row / transaction_guid | charity_name | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_018 | public.fact_transaction | 1 row / transaction_guid | partner_defined_data_value | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
+| PUB_004 | STG_019 | public.fact_transaction | 1 row / transaction_guid | network_token_usage | mixed | Behavior/attr outputs | — | Backend/Derived |  | `[passthrough]` Copies test, device, fanclub, buy-now, charity, partner, and network-token fields from warehouse_loader.fact_transaction_base. |
 | PUB_005 | STG_020 | public.fact_transaction | 1 row / transaction_guid | is_plf, is_imax, is_3d, is_higher_fee_amenity | boolean | Amenity flags | false | Derived |  | `[passthrough]` Copies amenity flags from warehouse_loader.fact_transaction_base. |
-| PUB_006 | STG_022, STG_023, STG_021 | public.fact_transaction | 1 row / transaction_guid | ticket_tax_rate, is_ticket_tax_transaction, utm_source, utm_medium, utm_campaign, utm_content, utm_term | mixed | PR tax + UTM fields | — | Backend/Derived |  | `[passthrough]` Copies UTM and ticket-tax fields from warehouse_loader.fact_transaction_base. |
+| PUB_006 | STG_022 | public.fact_transaction | 1 row / transaction_guid | ticket_tax_rate | mixed | PR tax + UTM fields | — | Backend/Derived |  | `[passthrough]` Copies UTM and ticket-tax fields from warehouse_loader.fact_transaction_base. |
+| PUB_006 | STG_023 | public.fact_transaction | 1 row / transaction_guid | is_ticket_tax_transaction | mixed | PR tax + UTM fields | — | Backend/Derived |  | `[passthrough]` Copies UTM and ticket-tax fields from warehouse_loader.fact_transaction_base. |
+| PUB_006 | STG_021 | public.fact_transaction | 1 row / transaction_guid | utm_source, utm_medium, utm_campaign, utm_content, utm_term | mixed | PR tax + UTM fields | — | Backend/Derived |  | `[passthrough]` Copies UTM and ticket-tax fields from warehouse_loader.fact_transaction_base. |
 
 </details>
 
@@ -123,7 +148,7 @@ Raw (transaction, transactionCommitted, transactionRolledBack, transactionCustom
 <summary><strong>Analytics (31 fields)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_001 | PUB_001 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction id | 9F2A... | Backend |  | `[passthrough]` Reads public.fact_transaction; public.fact_transaction.transaction_guid |
 | AN_002 | PUB_001 | analytics.transactions_data_source | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | `[passthrough]` Reads public.fact_transaction; public.fact_transaction.is_successful |
 | AN_003 | PUB_001 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_utc | timestamp | Start UTC | 2026-10-01 16:10:00 | Backend |  | `[rename/cast]` Reads public.fact_transaction; public.fact_transaction.transaction_start_datetime |
@@ -180,7 +205,7 @@ Side note: the aggregates read row-level public payment/item facts and dimension
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_022 | raw_import_cache.transactionPayment + raw_import_cache.paypaltrrdetail + raw_import_cache.paypalstldetail + raw_import_cache.processorbraintreeauthorizationrequest + raw_import_cache.processorbraintreeauthorizationresponse + raw_import_cache.processorbraintreerefundrequest + raw_import_cache.processorbraintreerefundresponse | payment row / transaction | Payment_tp, Account_cd, Transaction_at, Payment_GUID, processor transaction IDs | mixed | Payment amounts, types, and processor order IDs | VISA / ord_123 | Backend/Third-party |  | `factPayment.sql` reads transactionPayment and processor response/request feeds; payment aggregation reads the resulting fact_payment. |
 | RAW_023 | raw_import_cache.transactionItem | 1 row / item | Item_qy, Item_at, SalesFee_at, WaivedSalesFee_at, SurchargeFee_at, ReservedFee_at, CardFee_at, Shipping_at, taxable_at, totaladmissions_qy, Item_tp | numeric/mixed | Item-level quantities, ticket sales, fees, and taxable-fee inputs | 2 / 35.00 | Backend |  | `factTransactionItem.sql` uses these fields to build public.fact_transaction_item; the aggregate item_count excludes subscription items. |
 | RAW_035 | raw_import_cache.ticketTypeMapping + raw_import_cache.ticketCategory | mapping/category row | pos_description, chain_id, category_id, category_description, display_description | mixed | Item description lookups used by aggregate | — | Backend |  | `factTransactionItemAggregate.sql` uses these mappings to determine item_type labels before the transaction-level rollup. |
@@ -191,9 +216,9 @@ Side note: the aggregates read row-level public payment/item facts and dimension
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_024 | RAW_022 | warehouse_loader.fact_payment_aggregate | 1 row / transaction_guid | payment_types, processor_order_ids, gross_transaction_amount | mixed | Payment aggregates at tx grain | — | Derived/Third-party |  | `[aggregate]` Transaction-level rollup of raw payment lineage. SQL reads public.fact_payment and joins public.dim_payment_instrument and public.dim_payment_type for payment type labels. |
-| STG_025 | RAW_023, RAW_035 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_count, item_sales_amount, item_fees_amount, item_surcharge_fee_amount, item_waived_sales_fee_amount, fanclub_waived_sales_fee_amount, fee_waiver_item_count, fanclub_fee_waiver_item_count, item_taxable_sales_fee_amount, charity_amount | numeric | Item aggregates at tx grain | — | Derived |  | `[aggregate]` Transaction-level rollup of raw item lineage. SQL reads public.fact_transaction_item and uses public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory for item labels. Donation amounts feed charity separately; subscriptions are excluded from item_count. |
+| STG_025 | RAW_023 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_count, item_sales_amount, item_fees_amount, item_surcharge_fee_amount, item_waived_sales_fee_amount, fanclub_waived_sales_fee_amount, fee_waiver_item_count, fanclub_fee_waiver_item_count, item_taxable_sales_fee_amount, charity_amount | numeric | Item aggregates at tx grain | — | Derived |  | `[aggregate]` Transaction-level rollup of raw item measures. SQL reads public.fact_transaction_item; donation amounts feed charity separately, and subscription items are excluded from item_count. Item-label mappings are used for an intermediate item_types value, which is not listed in this row. |
 
 </details>
 
@@ -201,13 +226,23 @@ Side note: the aggregates read row-level public payment/item facts and dimension
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
-| PUB_020 | STG_001, STG_002, STG_003, STG_006, STG_028 | public.fact_payment + public.dim_payment_instrument + public.dim_payment_type | payment grain | transaction_guid, transaction_amount, payment_instrument_key, processor_order_id, payment_type_id | mixed | Payment facts and type lookup used by payment aggregate | — | ETL |  | `[lookup]` Builds public.fact_payment by joining warehouse_loader.fact_transaction_base, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.paypaltrrdetail, raw_import_cache.paypalstldetail, raw_import_cache.processorbraintreeauthorizationrequest, raw_import_cache.processorbraintreeauthorizationresponse, raw_import_cache.processorbraintreerefundrequest, and raw_import_cache.processorbraintreerefundresponse; it also uses public.dim_payment_instrument, public.dim_payment_type, public.dim_processor, public.dim_processor_error_code, and public.dim_credit_card_type. The aggregate reads public.fact_payment and the payment instrument/type dimensions. |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PUB_020 | STG_001 | public.fact_payment + public.dim_payment_instrument + public.dim_payment_type | payment grain | transaction_guid, transaction_amount, payment_instrument_key, processor_order_id, payment_type_id | mixed | Payment facts and type lookup used by payment aggregate | — | ETL |  | `[lookup]` Builds public.fact_payment by joining warehouse_loader.fact_transaction_base, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.paypaltrrdetail, raw_import_cache.paypalstldetail, raw_import_cache.processorbraintreeauthorizationrequest, raw_import_cache.processorbraintreeauthorizationresponse, raw_import_cache.processorbraintreerefundrequest, and raw_import_cache.processorbraintreerefundresponse; it also uses public.dim_payment_instrument, public.dim_payment_type, public.dim_processor, public.dim_processor_error_code, and public.dim_credit_card_type. The aggregate reads public.fact_payment and the payment instrument/type dimensions. |
+| PUB_020 | STG_002 | public.fact_payment + public.dim_payment_instrument + public.dim_payment_type | payment grain | transaction_guid, transaction_amount, payment_instrument_key, processor_order_id, payment_type_id | mixed | Payment facts and type lookup used by payment aggregate | — | ETL |  | `[lookup]` Builds public.fact_payment by joining warehouse_loader.fact_transaction_base, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.paypaltrrdetail, raw_import_cache.paypalstldetail, raw_import_cache.processorbraintreeauthorizationrequest, raw_import_cache.processorbraintreeauthorizationresponse, raw_import_cache.processorbraintreerefundrequest, and raw_import_cache.processorbraintreerefundresponse; it also uses public.dim_payment_instrument, public.dim_payment_type, public.dim_processor, public.dim_processor_error_code, and public.dim_credit_card_type. The aggregate reads public.fact_payment and the payment instrument/type dimensions. |
+| PUB_020 | STG_003 | public.fact_payment + public.dim_payment_instrument + public.dim_payment_type | payment grain | transaction_guid, transaction_amount, payment_instrument_key, processor_order_id, payment_type_id | mixed | Payment facts and type lookup used by payment aggregate | — | ETL |  | `[lookup]` Builds public.fact_payment by joining warehouse_loader.fact_transaction_base, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.paypaltrrdetail, raw_import_cache.paypalstldetail, raw_import_cache.processorbraintreeauthorizationrequest, raw_import_cache.processorbraintreeauthorizationresponse, raw_import_cache.processorbraintreerefundrequest, and raw_import_cache.processorbraintreerefundresponse; it also uses public.dim_payment_instrument, public.dim_payment_type, public.dim_processor, public.dim_processor_error_code, and public.dim_credit_card_type. The aggregate reads public.fact_payment and the payment instrument/type dimensions. |
+| PUB_020 | STG_006 | public.fact_payment + public.dim_payment_instrument + public.dim_payment_type | payment grain | transaction_guid, transaction_amount, payment_instrument_key, processor_order_id, payment_type_id | mixed | Payment facts and type lookup used by payment aggregate | — | ETL |  | `[lookup]` Builds public.fact_payment by joining warehouse_loader.fact_transaction_base, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.paypaltrrdetail, raw_import_cache.paypalstldetail, raw_import_cache.processorbraintreeauthorizationrequest, raw_import_cache.processorbraintreeauthorizationresponse, raw_import_cache.processorbraintreerefundrequest, and raw_import_cache.processorbraintreerefundresponse; it also uses public.dim_payment_instrument, public.dim_payment_type, public.dim_processor, public.dim_processor_error_code, and public.dim_credit_card_type. The aggregate reads public.fact_payment and the payment instrument/type dimensions. |
+| PUB_020 | STG_028 | public.fact_payment + public.dim_payment_instrument + public.dim_payment_type | payment grain | transaction_guid, transaction_amount, payment_instrument_key, processor_order_id, payment_type_id | mixed | Payment facts and type lookup used by payment aggregate | — | ETL |  | `[lookup]` Builds public.fact_payment by joining warehouse_loader.fact_transaction_base, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.paypaltrrdetail, raw_import_cache.paypalstldetail, raw_import_cache.processorbraintreeauthorizationrequest, raw_import_cache.processorbraintreeauthorizationresponse, raw_import_cache.processorbraintreerefundrequest, and raw_import_cache.processorbraintreerefundresponse; it also uses public.dim_payment_instrument, public.dim_payment_type, public.dim_processor, public.dim_processor_error_code, and public.dim_credit_card_type. The aggregate reads public.fact_payment and the payment instrument/type dimensions. |
 | PUB_007 | STG_024 | public.fact_transaction | 1 row / transaction_guid | payment_types, processor_order_ids | varchar | Payment labels and processor refs | VISA / ord_123 | Derived/Third-party |  | `[passthrough]` Copies payment labels and processor IDs from warehouse_loader.fact_payment_aggregate. |
-| PUB_021 | STG_001, STG_002, STG_003, STG_006, STG_028 | public.fact_transaction_item + public.dim_chain + public.dim_purchase_type + public.dim_theater | item grain | transaction_guid, item_count, item_amount, sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, taxable_sales_fee_amount | mixed | Item facts used by item aggregate | — | ETL |  | `[lookup]` Joins raw_import_cache.transactionItem to warehouse_loader.fact_transaction_base, public.dim_purchase_type, and public.dim_theater to build public.fact_transaction_item. Its aggregate also reads public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory. |
+| PUB_021 | STG_001 | public.fact_transaction_item + public.dim_chain + public.dim_purchase_type + public.dim_theater | item grain | transaction_guid, item_count, item_amount, sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, taxable_sales_fee_amount | mixed | Item facts used by item aggregate | — | ETL |  | `[lookup]` Joins raw_import_cache.transactionItem to warehouse_loader.fact_transaction_base, public.dim_purchase_type, and public.dim_theater to build public.fact_transaction_item. Its aggregate also reads public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory. |
+| PUB_021 | STG_002 | public.fact_transaction_item + public.dim_chain + public.dim_purchase_type + public.dim_theater | item grain | transaction_guid, item_count, item_amount, sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, taxable_sales_fee_amount | mixed | Item facts used by item aggregate | — | ETL |  | `[lookup]` Joins raw_import_cache.transactionItem to warehouse_loader.fact_transaction_base, public.dim_purchase_type, and public.dim_theater to build public.fact_transaction_item. Its aggregate also reads public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory. |
+| PUB_021 | STG_003 | public.fact_transaction_item + public.dim_chain + public.dim_purchase_type + public.dim_theater | item grain | transaction_guid, item_count, item_amount, sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, taxable_sales_fee_amount | mixed | Item facts used by item aggregate | — | ETL |  | `[lookup]` Joins raw_import_cache.transactionItem to warehouse_loader.fact_transaction_base, public.dim_purchase_type, and public.dim_theater to build public.fact_transaction_item. Its aggregate also reads public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory. |
+| PUB_021 | STG_006 | public.fact_transaction_item + public.dim_chain + public.dim_purchase_type + public.dim_theater | item grain | transaction_guid, item_count, item_amount, sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, taxable_sales_fee_amount | mixed | Item facts used by item aggregate | — | ETL |  | `[lookup]` Joins raw_import_cache.transactionItem to warehouse_loader.fact_transaction_base, public.dim_purchase_type, and public.dim_theater to build public.fact_transaction_item. Its aggregate also reads public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory. |
+| PUB_021 | STG_028 | public.fact_transaction_item + public.dim_chain + public.dim_purchase_type + public.dim_theater | item grain | transaction_guid, item_count, item_amount, sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, taxable_sales_fee_amount | mixed | Item facts used by item aggregate | — | ETL |  | `[lookup]` Joins raw_import_cache.transactionItem to warehouse_loader.fact_transaction_base, public.dim_purchase_type, and public.dim_theater to build public.fact_transaction_item. Its aggregate also reads public.dim_chain, raw_import_cache.ticketTypeMapping, and raw_import_cache.ticketCategory. |
 | PUB_008 | STG_025 | public.fact_transaction | 1 row / transaction_guid | item_count | int | Item quantity | 2 | Derived |  | `[rename/cast]` Copies item_count from warehouse_loader.fact_transaction_item_aggregate. |
-| PUB_009 | STG_024, STG_025 | public.fact_transaction | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross minus charity | 42.50 | Derived |  | `[derived]` Sets gross amount to warehouse_loader.fact_payment_aggregate.gross_transaction_amount minus warehouse_loader.fact_transaction_item_aggregate.charity_amount. |
-| PUB_010 | STG_025, STG_024 | public.fact_transaction | 1 row / transaction_guid | sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, waived_fanclub_fee_amount, waived_sales_fee_ticket_count, waived_fanclub_fee_ticket_count, ticket_sales_amount, taxable_sales_fee_amount, charity_amount, true_gross_transaction_amount | numeric(19,4) | Aggregated commercial metrics | — | Derived |  | `[passthrough]` Copies sales, fee, waiver, ticket-sales, taxable-fee, and charity measures from warehouse_loader.fact_transaction_item_aggregate and fact_payment_aggregate. |
+| PUB_009 | STG_024 | public.fact_transaction | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross minus charity | 42.50 | Derived |  | `[derived]` Sets gross amount to warehouse_loader.fact_payment_aggregate.gross_transaction_amount minus warehouse_loader.fact_transaction_item_aggregate.charity_amount. |
+| PUB_009 | STG_025 | public.fact_transaction | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross minus charity | 42.50 | Derived |  | `[derived]` Sets gross amount to warehouse_loader.fact_payment_aggregate.gross_transaction_amount minus warehouse_loader.fact_transaction_item_aggregate.charity_amount. |
+| PUB_010 | STG_025 | public.fact_transaction | 1 row / transaction_guid | sales_fee_amount, surcharge_fee_amount, waived_sales_fee_amount, waived_fanclub_fee_amount, waived_sales_fee_ticket_count, waived_fanclub_fee_ticket_count, ticket_sales_amount, taxable_sales_fee_amount, charity_amount | numeric(19,4) | Aggregated commercial metrics | — | Derived |  | `[passthrough]` Copies sales, fee, waiver, ticket-sales, taxable-fee, and charity measures from warehouse_loader.fact_transaction_item_aggregate. |
+| PUB_010 | STG_024 | public.fact_transaction | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Aggregated commercial metrics | — | Derived |  | `[passthrough]` Copies true_gross_transaction_amount from warehouse_loader.fact_payment_aggregate.gross_transaction_amount. |
 
 </details>
 
@@ -215,7 +250,7 @@ Side note: the aggregates read row-level public payment/item facts and dimension
 <summary><strong>Analytics (13 fields)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_020 | PUB_007 | analytics.transactions_data_source | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | VISA | Derived |  | `[passthrough]` Reads public.fact_transaction; copies payment_types from public.fact_transaction, assembled by warehouse_loader.fact_payment_aggregate. |
 | AN_021 | PUB_007 | analytics.transactions_data_source | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | ord_123 | Third-party |  | `[passthrough]` Reads public.fact_transaction; copies processor_order_ids from public.fact_transaction, assembled by warehouse_loader.fact_payment_aggregate. |
 | AN_073 | PUB_008 | analytics.transactions_data_source | 1 row / transaction_guid | item_qty | int | Item qty | 2 | Derived |  | `[rename/cast]` Reads public.fact_transaction; renames item_count to item_qty; public.fact_transaction gets the count from warehouse_loader.fact_transaction_item_aggregate. |
@@ -252,7 +287,7 @@ Side note: public.fact_return and related dimensions support the calculations; t
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_024 | raw_import_cache.refund | 1 row / refund line | Price_at, Fee_at, Tax_at, Surcharge_at, ReservedFee_at, CardFee_at, taxable_at, donation_at | numeric | Return-side financial values | — | Backend |  | `factReturn.sql` groups refund lines by refund GUID, purchase GUID, return create datetime, and reason before inserting public.fact_return; downstream aggregates and refund-row updates use those values. |
 
 </details>
@@ -261,7 +296,7 @@ Side note: public.fact_return and related dimensions support the calculations; t
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_026 | RAW_024 | warehouse_loader.fact_return_aggregate | 1 row / purchase_transaction_guid | returned_ticket_amount, returned_fee_amount, returned_charity_amount | numeric | Purchase-side returned rollups | — | Derived |  | `[aggregate]` Transaction-level rollup of raw refund lineage. The ETL sums successful public.fact_return rows by purchase_transaction_guid. |
 | STG_027 | RAW_024 | #fact_return_lookup (temp) | 1 row / return_transaction_guid | return_* + purchase_transaction_guid | mixed | Return lookup set in run window | — | ETL |  | `[lookup]` Stages raw refund lineage for refund-row updates by copying return details from public.fact_return into #fact_return_lookup. |
 
@@ -271,7 +306,7 @@ Side note: public.fact_return and related dimensions support the calculations; t
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | PUB_022 | STG_001, STG_002, STG_003, STG_004, STG_006, STG_007, STG_008, STG_024, STG_025, STG_028 | public.fact_return | refund/purchase GUID, return datetime, and reason group | return_transaction_guid, purchase_transaction_guid, return_amount, return_fee_amount, return_tax_amount, return_surcharge_amount, return_reservation_fee_amount, return_card_fee_amount, return_charity_amount | mixed | Return facts consumed by return aggregation and refund updates | — | ETL |  | `[aggregate/lookup]` Groups raw_import_cache.refund by refund GUID, purchase GUID, create time, and reason. Joins warehouse_loader.fact_transaction_base, warehouse_loader.fact_payment_aggregate, warehouse_loader.fact_transaction_item_aggregate, public.dim_return_reason, public.dim_chain, public.dim_theater, public.dim_property, and public.dim_data_source to build public.fact_return. |
 | PUB_011 | STG_026 | public.fact_transaction | 1 row / purchase transaction_guid | returned_amount, returned_fee_amount, returned_charity_amount | numeric(19,4) | Returned values at purchase row | -42.50 | Derived |  | `[lookup]` Updates purchase rows from warehouse_loader.fact_return_aggregate, matched by purchase GUID. |
 | PUB_012 | STG_027 | public.fact_transaction | 1 row / refund transaction_guid | sales_fee_return_amount, surcharge_fee_return_amount, reservation_fee_return_amount, tax_return_amount, card_fee_return_amount, taxable_sales_fee_amount, charity_return_amount | numeric(19,4) | Return amounts on refund row | -5.00 etc | Derived |  | `[derived]` Updates refund rows in public.fact_transaction from #fact_return_lookup, built from public.fact_return; writes return amounts as negatives. |
@@ -283,7 +318,7 @@ Side note: public.fact_return and related dimensions support the calculations; t
 <summary><strong>Analytics (11 fields)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_077 | PUB_011 | analytics.transactions_data_source | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount | -42.50 | Derived |  | `[passthrough]` Reads public.fact_transaction; copies returned_amount from public.fact_transaction; factTransaction.sql updates that table from warehouse_loader.fact_return_aggregate, with delayed analytics sync from public.fact_transaction. |
 | AN_078 | PUB_011 | analytics.transactions_data_source | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | -5.00 | Derived |  | `[passthrough]` Reads public.fact_transaction; copies returned_fee_amount from public.fact_transaction; it is updated from warehouse_loader.fact_return_aggregate, with delayed analytics sync from public.fact_transaction. |
 | AN_082 | PUB_012 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Sales fee return amount | -5.00 | Derived |  | `[passthrough]` Reads public.fact_transaction; copies sales_fee_return_amount from public.fact_transaction; factTransaction.sql negates the fee from public.fact_return via #fact_return_lookup. |
@@ -318,7 +353,7 @@ Side note: public dimensions supply descriptive lookup values; details are liste
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_036 | raw_import_cache.affiliate, raw_import_cache.affiliateGroupMapping, raw_import_cache.affiliateGroup, raw_import_cache.affiliateCategory, raw_import_cache.movieDetail, raw_import_cache.movieDetailParent, raw_import_cache.movieDetailDeleted, raw_import_cache.filmRelatedFormatType, raw_import_cache.showtimeTMS, raw_import_cache.movieParentOverride, raw_import_cache.magicMovieIdMapping, raw_import_cache.universalBoxOfficeSales, raw_import_cache.movieProduction, raw_import_cache.chain, raw_import_cache.theater, raw_import_cache.theaterpos, raw_import_cache.postalCodeTimeZone, raw_import_cache.purchaseChannelStatus, raw_import_cache.returnType, raw_import_cache.transaction, raw_import_cache.transactionPayment, raw_import_cache.transactionItem, raw_import_cache.transactionPurchaseFunnel, raw_import_cache.transactionAttribute | dimension source grain | names, codes, dates, locations, parent IDs, vendor/terminal attributes, and partner labels | mixed | Raw sources for public dimensions used in projection | — | Backend/Third-party |  | The tier_1_dimensions SQL loads the relevant public.dim_* attributes from these raw tables; specific dimension source tables are named in each dimension loader. |
 | RAW_025 | raw_import_cache.transaction + raw_import_cache.refund | 1 row / transaction_guid | Affiliate_id, Channel_cd, Transaction_tp, UserAgent_nm, Property_nm, refund-to-purchase GUID | mixed | Natural keys/codes for dim resolution | 11879/WAP/... | Backend |  | Inputs to surrogate key mapping; `factTransactionBase.sql` follows refund-to-purchase GUIDs to fall back to the parent purchase property. |
 | RAW_026 | raw_import_cache.transactionPerformanceAttribute | 1 row / tx/perf | movie_detail_id, theater_pkey | int | Movie/theater ids | 10293/4451 | Backend |  | Inputs to movie/theater keys. |
@@ -332,7 +367,7 @@ Side note: public dimensions supply descriptive lookup values; details are liste
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_028 | RAW_025, RAW_026, RAW_028, RAW_027, RAW_029 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | movie_key, affiliate_key, chain_key, channel_key, purchase_funnel_key, return_type_key, theater_key, transaction_type_key, user_agent_key, property_key, partner_channel_key, partner_platform_key | bigint | Conformed surrogate keys | 8123 | ETL |  | `[lookup]` Resolves raw keys from raw_import_cache.transaction, raw_import_cache.transactionPerformanceAttribute, raw_import_cache.transactionCommitted, raw_import_cache.transactionPurchaseFunnel, raw_import_cache.transactionAttribute, raw_import_cache.transactionCustomer, and raw_import_cache.refund against public.dim_channel, public.dim_customer, public.dim_affiliate, public.dim_movie, public.dim_purchase_funnel, public.dim_return_type, public.dim_theater, public.dim_transaction_type, public.dim_user_agent, public.dim_email_address, public.dim_property, public.dim_partner_channel, and public.dim_partner_platform; unmatched keys use unknown rows. |
 
 </details>
@@ -341,7 +376,7 @@ Side note: public dimensions supply descriptive lookup values; details are liste
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | PUB_014 | STG_028 | public.fact_transaction | 1 row / transaction_guid | all *_key join columns | bigint | Join keys for dim projection | — | ETL |  | `[passthrough]` Copies surrogate keys from warehouse_loader.fact_transaction_base. |
 | PUB_015 | RAW_036 | public.dim_* tables | 1 row / dim key | descriptive attributes used by analytics | mixed | Lookup attributes | — | Backend/Third-party |  | `[lookup]` Analytics reads public.dim_affiliate, public.dim_movie, public.dim_channel, public.dim_chain, public.dim_theater, public.dim_transaction_type, public.dim_user_agent, public.dim_purchase_funnel, public.dim_return_type, public.dim_property, public.dim_partner_channel, and public.dim_partner_platform. Their tier_1_dimensions jobs load the raw inputs grouped in RAW_036. |
 
@@ -351,7 +386,7 @@ Side note: public dimensions supply descriptive lookup values; details are liste
 <summary><strong>Analytics (52 fields)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_022 | PUB_015 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | `[lookup]` Reads public.fact_transaction, public.dim_affiliate; public.dim_affiliate.affiliate_name |
 | AN_023 | PUB_015 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | `[lookup]` Reads public.fact_transaction, public.dim_affiliate; public.dim_affiliate.affiliate_group_name |
 | AN_024 | PUB_015 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | `[lookup]` Reads public.fact_transaction, public.dim_affiliate; public.dim_affiliate.affiliate_category_name |
@@ -428,7 +463,7 @@ Side note: public dimensions supply lookup attributes; details are listed below.
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_030 | raw_import_cache.transaction + raw_import_cache.transactionCommitted + raw_import_cache.transactionRolledBack | 1 row / tx | Create_dm timestamps | timestamp | Lifecycle UTC timestamps | 2026-10-01... | Backend |  | Inputs to timezone derivations. |
 | RAW_031 | raw_import_cache.transactionPerformanceAttribute | 1 row / tx/perf | Performance_dm | timestamp | Performance local timestamp | 2026-10-05 19:30:00 | Backend |  | Input to DATEDIFF metrics. |
 | RAW_032 | raw_import_cache.transaction | 1 row / tx | Affiliate_id, Channel_cd | mixed | Inputs to CASE bucketing | 11879/WAP | Backend |  | Feed dim-based CASE logic. |
@@ -439,7 +474,7 @@ Side note: public dimensions supply lookup attributes; details are listed below.
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_029 | RAW_030, RAW_031, RAW_032, RAW_026, RAW_036 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_* timestamps, performance_datetime_local, affiliate/channel/movie keys | mixed | Inputs to analytics derivations | — | Backend/ETL |  | `[passthrough]` Carries timestamps and performance values from raw_import_cache.transaction, raw_import_cache.transactionCommitted, raw_import_cache.transactionRolledBack, and raw_import_cache.transactionPerformanceAttribute; keys are resolved against public.dim_affiliate, public.dim_channel, public.dim_movie, and public.dim_theater. |
 
 </details>
@@ -448,7 +483,7 @@ Side note: public dimensions supply lookup attributes; details are listed below.
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | PUB_016 | STG_029 | public.fact_transaction | 1 row / transaction_guid | lifecycle timestamps + performance_datetime_local | timestamp | Inputs for timezone/delta calculations | — | Backend/Derived |  | `[passthrough]` Reads lifecycle and performance fields from public.fact_transaction; that table gets them from warehouse_loader.fact_transaction_base. |
 | PUB_017 | RAW_036 | public.dim_movie / dim_affiliate / dim_channel | dim grain | movie_release_date / affiliate_id / channel_name | mixed | Inputs to DATEDIFF and CASE logic | — | Backend |  | `[lookup]` Reads attributes from public.dim_movie, public.dim_affiliate, and public.dim_channel for analytics calculations. |
 
@@ -458,7 +493,7 @@ Side note: public dimensions supply lookup attributes; details are listed below.
 <summary><strong>Analytics (11 fields)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_004 | PUB_016 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived |  | `[derived]` Reads public.fact_transaction; CONVERT_TIMEZONE('US/Pacific', start_utc) |
 | AN_006 | PUB_016 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived |  | `[derived]` Reads public.fact_transaction; timezone conversion |
 | AN_008 | PUB_016 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived |  | `[derived]` Reads public.fact_transaction; timezone conversion |
@@ -493,7 +528,7 @@ Side note: ZIP-to-DMA lookup data supplies the enrichment; details are listed be
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_033 | raw_import_cache.designatedMarketArea | 1 row / zip_code | zip_code, market_name | varchar | ZIP to DMA mapping | 90028 / Los Angeles | Third-party |  | External DMA source used in analytics join. |
 
 </details>
@@ -502,7 +537,7 @@ Side note: ZIP-to-DMA lookup data supplies the enrichment; details are listed be
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_030 | RAW_026 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | theater_key | bigint | Theater lookup key | 11872 | ETL |  | `[lookup]` Resolves theater_pkey from raw_import_cache.transactionPerformanceAttribute against public.dim_theater. |
 
 </details>
@@ -511,7 +546,7 @@ Side note: ZIP-to-DMA lookup data supplies the enrichment; details are listed be
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | PUB_018 | STG_030 | public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
 
 </details>
@@ -520,7 +555,7 @@ Side note: ZIP-to-DMA lookup data supplies the enrichment; details are listed be
 <summary><strong>Analytics (1 field)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_059 | PUB_018 | analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | `[lookup]` Reads public.fact_transaction, public.dim_theater, raw_import_cache.designatedMarketArea; joins public.dim_theater.zip_code to raw_import_cache.designatedMarketArea.zip_code and selects market_name. |
 
 </details>
@@ -545,7 +580,7 @@ Side note: recent-window refreshes use a temporary snapshot.
 <summary><strong>Raw</strong></summary>
 
 | Field ID | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RAW_034 | data_lake.salestaxtransaction | line-item grain | document_number, lineitem_number, total_lineitem_tax, tax area/rate and status fields | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  | `salestax/sql/transactions_load.sql` loads this feed into raw_import_cache.stgsalestaxtransaction and builds public.fact_sales_fee_tax. |
 
 </details>
@@ -554,7 +589,7 @@ Side note: recent-window refreshes use a temporary snapshot.
 <summary><strong>Staging</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | STG_031 | RAW_034 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | document_number, lineitem_number, total_lineitem_tax, tax area/rate and status fields | mixed | Raw sales-tax rows staged before fact construction | — | ETL |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | STG_032 | STG_031 | temp #transactionSalesTax | 1 row / transaction_guid | sales_fee_tax_amount, returned_sales_fee_tax_amount, sales_fee_tax_return_amount, sales_fee_tax_amount_for_returned_purchase, pr_ticket_tax_amount, returned_ticket_tax_amount, ticket_tax_return_amount, ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax values staged for update | — | ETL |  | `[lookup]` Stages transaction-level tax lineage for delayed analytics refresh. The SQL snapshot is copied from recent public.fact_sales_fee_tax rows. |
 
@@ -564,7 +599,7 @@ Side note: recent-window refreshes use a temporary snapshot.
 <summary><strong>Public</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | PUB_019 | STG_031 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount, returned_sales_fee_tax_amount, sales_fee_tax_return_amount, sales_fee_tax_amount_for_returned_purchase, pr_ticket_tax_amount, returned_ticket_tax_amount, ticket_tax_return_amount, ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  | `[derived]` Builds public.fact_sales_fee_tax from raw_import_cache.stgsalestaxtransaction and raw_import_cache.stgsalestaxtransaction_unmatched, using public.fact_transaction, public.fact_return, public.dim_transaction_type, public.dim_theater, and public.dim_theater_sales_fee_tax_rate. |
 
 </details>
@@ -573,7 +608,7 @@ Side note: recent-window refreshes use a temporary snapshot.
 <summary><strong>Analytics (9 fields)</strong></summary>
 
 | Field ID | Previous Stage ID(s) | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
-|---|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | AN_092 | PUB_019 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | `[lookup]` Reads public.fact_transaction and public.fact_sales_fee_tax; copies sales_fee_tax_amount from public.fact_sales_fee_tax. The salestax refresh also updates recent analytics rows from #transactionSalesTax. |
 | AN_093 | PUB_019 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | `[lookup]` Reads public.fact_transaction and public.fact_sales_fee_tax; copies returned_sales_fee_tax_amount from public.fact_sales_fee_tax. The salestax refresh also updates recent analytics rows from #transactionSalesTax. |
 | AN_094 | PUB_019 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | `[lookup]` Reads public.fact_transaction and public.fact_sales_fee_tax; copies sales_fee_tax_return_amount from public.fact_sales_fee_tax. The salestax refresh also updates recent analytics rows from #transactionSalesTax. |
@@ -593,7 +628,7 @@ Side note: recent-window refreshes use a temporary snapshot.
 ## Canonical Field ID Map (AN_001–AN_128)
 
 | Field ID | Column Name |
-|---|---|
+| --- | --- |
 | AN_001 | transaction_guid |
 | AN_002 | is_successful |
 | AN_003 | transaction_start_datetime_utc |
