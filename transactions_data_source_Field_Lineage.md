@@ -16,14 +16,17 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
   - `[aggregate]` — combines multiple rows into a summarized result, such as a sum or count.
   - `[conditional]` — chooses or adjusts a value based on a condition, such as a `CASE` rule.
   - Tags can be combined when a transformation does more than one of these things.
+- **Example values** are illustrative field formats, not samples from production data.
+- **Data types** use declared types where bundled DDL/copy definitions are available; otherwise they show the type family inferred from the source expression, and exact target precision is unconfirmed.
 - **Consistent field IDs**: `AN_001` … `AN_128` identify analytics fields; `RAW_###`, `STG_###`, and `PUB_###` identify Raw, Staging, and Public lineage fields. Every data row has one unique Field ID, numbered in document order within its layer.
+- **Previous Stage ID(s)** in the Staging rows follow the transaction-level Raw → Stage → Public → Analytics overview. When a staging aggregate reads a lower-grain `public` fact internally, its raw/stage ancestry is shown in the ID cell and the physical `public` input is named in Logic Explanation. Public and Analytics rows continue to point to their immediate preceding lineage IDs. For Groups A and B, Raw columns are grouped only when they come from the same source table. Each Column Name cell contains one column name. Group repeated references to the same column in the same table into one row and keep one Field ID in that row. List multiple Previous Stage IDs only when that field logic uses multiple direct predecessors.
 - Grouping is by **flow pattern**, not business domain.
 
 ---
 
 ## Coverage Summary (128 / 128)
 
-- Group A — Staging-derived pass-through: **31**
+- Group A — Transaction-level fact flow: **31**
 - Group B — Aggregated commercial measures: **13**
 - Group C — Return/refund enrichment and sync: **11**
 - Group D — Dimension lookup projection: **52**
@@ -34,7 +37,7 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
 ---
 
 <details open>
-<summary><strong>Group A — Staging-derived pass-through (31 fields)</strong></summary>
+<summary><strong>Group A — Transaction-level fact flow (31 fields)</strong></summary>
 
 ### Flow Diagram
 ```text
@@ -876,7 +879,7 @@ Side note: recent-window refreshes use a temporary snapshot.
 
 ## Quick Business Crosswalk
 
-- **Group A:** direct pass-through style fields standardized in staging/public before analytics.
+- **Group A:** transaction-level fields loaded through `warehouse_loader.fact_transaction_base` into `public.fact_transaction`; individual fields can be copied, conditional, mapped, aggregated, or otherwise derived.
 - **Group B:** aggregated commercial metrics from item/payment aggregates.
 - **Group C:** return/refund derived fields and sync behavior.
 - **Group D:** descriptive dim attributes projected from conformed keys.
