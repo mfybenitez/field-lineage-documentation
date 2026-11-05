@@ -20,8 +20,6 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
 - Dimension tables are side lookups. They are listed in field notes and are not shown as permanent steps in the main flow.
 - Temporary tables, including `#` tables, are mentioned in notes and excluded from the permanent flow diagram and lineage table.
 - When a field has a fallback source, its primary source is named first and the fallback is identified in the notes.
-- If a value is passed through unchanged from the preceding stage, its Source cell keeps the preceding stage’s Source label.
-- The collapsible table for each field lists: Redshift Table, Table Grain, Column Name, Data Type, Description, Example Value, Source, GitHub Link, and Logic Explanation. GitHub Link cells are left blank.
 - **Source** describes the origin or classification of the row's data:
   - `Backend` — data from Fandango ticketing/backend systems.
   - `Third-party` — data supplied by an external provider or feed.
@@ -884,7 +882,7 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. A non-null movieParentOverride wins; otherwise DataEng matches title and release date. If there is no match (or an override maps to itself), it uses the child movie ID.  
+**Notes:** public.dim_movie joins public.fact_transaction on movie_key. A non-null movieParentOverride wins; otherwise DataEng matches a title prefix and release date. If there is no match (or an override maps to itself), it uses the child movie ID.  
 
 <details>
 <summary>Lineage table for filmid_parent</summary>
@@ -914,7 +912,7 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Parent title comes from movie detail; a non-null movieParentOverride selects the parent ID. Without one, DataEng matches title and release date, then defaults to the child movie. Deleted details and showtime placeholders cover missing active details.  
+**Notes:** public.dim_movie joins public.fact_transaction on movie_key. A non-null movieParentOverride selects the parent ID; otherwise DataEng matches a title prefix and release date, then defaults to the child movie. Deleted details and showtime placeholders cover missing active details.  
 
 <details>
 <summary>Lineage table for filmname_parent</summary>
@@ -1604,7 +1602,7 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. postalCodeTimeZone supplies the time-zone name using the theater ZIP; the dimension ETL retains its prior time zone when no ZIP is available. This fallback stays documented as a dimension side flow.  
+**Notes:** public.dim_theater joins public.fact_transaction on theater_key. postalCodeTimeZone supplies the time-zone name from the theater ZIP. If an incoming row has no ZIP, the dimension ETL carries forward the prior ZIP and resolves its time zone; without a ZIP, the value can be null. This stays documented as a dimension side flow.  
 
 <details>
 <summary>Lineage table for theater_time_zone_name</summary>
@@ -1946,7 +1944,7 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joins public.fact_transaction on affiliate_key. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate.  
+**Notes:** Analytics derives `apps` from `dim_affiliate.affiliate_id` using CASE rules. public.dim_affiliate joins public.fact_transaction on affiliate_key; raw_import_cache.affiliate supplies affiliate details, and raw_import_cache.transaction seeds IDs not present in affiliate.  
 
 <details>
 <summary>Lineage table for apps</summary>
@@ -1974,7 +1972,7 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate and public.dim_channel join to public.fact_transaction. raw_import_cache.affiliate supplies affiliate data; raw_import_cache.transaction supplies channel data and seeds affiliate IDs missing from affiliate.  
+**Notes:** Analytics derives `platform` from `dim_channel.channel_name` and `dim_affiliate.affiliate_id` using CASE rules. Both dimensions join to public.fact_transaction; raw_import_cache.transaction supplies channel IDs and seeds affiliate IDs not present in raw_import_cache.affiliate.  
 
 <details>
 <summary>Lineage table for platform</summary>
