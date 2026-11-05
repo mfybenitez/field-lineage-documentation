@@ -20,6 +20,7 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
 - Dimension tables are side lookups. They are listed in field notes and are not shown as permanent steps in the main flow.
 - Temporary tables, including `#` tables, are mentioned in notes and excluded from the permanent flow diagram and lineage table.
 - When a field has a fallback source, its primary source is named first and the fallback is identified in the notes.
+- If a value is passed through unchanged from the preceding stage, its Source cell keeps the preceding stage’s Source label.
 - **Source** describes the origin or classification of the row's data:
   - `Backend` — data from Fandango ticketing/backend systems.
   - `Third-party` — data supplied by an external provider or feed.
@@ -366,16 +367,16 @@ flowchart LR
   n3_0 --> n4_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Release date is primary from movieDetail; movieDetailDeleted supplies it when active details are absent.  
+**Notes:** public.dim_movie joins public.fact_transaction. Release date is primary from movieDetail; movieDetailDeleted supplies it when active details are absent. Value columns: public.dim_movie.movie_release_date; public.fact_transaction.transaction_end_datetime. Raw value columns include `movieDetail.date_released` (deleted details are fallback) and transaction end-time events.
 
 <details>
 <summary>Lineage table for deltareleasetopurchasedate</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `deltareleasetopurchasedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `deltareleasetopurchasedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `deltareleasetopurchasedate`. |  | Backend/Third-party |  |  |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | date_released | Not specified | Raw column(s) used by the dimension load for `deltareleasetopurchasedate`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | date_released | Not specified | Raw column(s) used by the dimension load for `deltareleasetopurchasedate`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | Create_dm | Not specified | Raw column(s) used by the dimension load for `deltareleasetopurchasedate`. | — | Backend/Third-party |  |  |
 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transaction`. |
 | raw_import_cache.transactionCommitted | 1 row / transaction_guid | Create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionCommitted`. |
 | raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback time | — | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionRolledBack`. |
@@ -402,15 +403,15 @@ flowchart LR
   n3_0 --> n4_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Release date is primary from movieDetail; movieDetailDeleted supplies it when active details are absent.  
+**Notes:** public.dim_movie joins public.fact_transaction. Release date is primary from movieDetail; movieDetailDeleted supplies it when active details are absent. Value columns: public.dim_movie.movie_release_date and public.fact_transaction.performance_datetime_local. Raw release-date values come from `movieDetail.date_released` with deleted details as fallback.
 
 <details>
 <summary>Lineage table for deltareleasetoshowtimedate</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `deltareleasetoshowtimedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `deltareleasetoshowtimedate`. |  | Backend/Third-party |  |  |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | date_released | Not specified | Raw column(s) used by the dimension load for `deltareleasetoshowtimedate`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | date_released | Not specified | Raw column(s) used by the dimension load for `deltareleasetoshowtimedate`. | — | Backend/Third-party |  |  |
 | raw_import_cache.transactionPerformanceAttribute | 1 row / transaction and performance | Performance_dm | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Reads `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | performance_datetime_local | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
 | public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `warehouse_loader.fact_transaction_base`. |
@@ -437,7 +438,7 @@ flowchart LR
   n2_0 --> n3_0
 ```
 
-**Notes:** Analytics calculates the date difference from transaction end time to performance time. The end time uses commit/rollback event dates, falling back to transaction.create_dm; performance time comes from transactionPerformanceAttribute.  
+**Notes:** Analytics calculates the date difference from transaction end time to performance time. The end time uses commit/rollback event dates, falling back to transaction.create_dm; performance time comes from transactionPerformanceAttribute. Value columns: public.fact_transaction.transaction_end_datetime and `public.fact_transaction.performance_datetime_local`; the end time is built from `transactionCommitted.Create_dm` / `transactionRolledBack.Create_dm`, falling back to `transaction.Create_dm`, and performance time comes from `transactionPerformanceAttribute.Performance_dm`.
 
 <details>
 <summary>Lineage table for deltapurchasetoshowtimedate</summary>
@@ -662,16 +663,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joined to public.fact_transaction on affiliate_key.  
+**Notes:** public.dim_affiliate joined to public.fact_transaction. Value column: `public.dim_affiliate.affiliate_name`.
 
 <details>
 <summary>Lineage table for affiliate_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_name`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | [lookup] Reads `affiliate_name` from `public.dim_affiliate` via `public.fact_transaction.affiliate_key`. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | affiliate_nm | Not specified | Raw column(s) used by the dimension load for `affiliate_name`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -690,18 +691,18 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joined to public.fact_transaction on affiliate_key.  
+**Notes:** public.dim_affiliate joined to public.fact_transaction. Value column: `public.dim_affiliate.affiliate_group_name`. Value source: `raw_import_cache.affiliateGroup.name`, linked through `raw_import_cache.affiliateGroupMapping`.
 
 <details>
 <summary>Lineage table for affiliate_group_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_group_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.affiliateGroupMapping | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_group_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.affiliateGroup | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_group_name`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | [lookup] Reads `affiliate_group_name` from `public.dim_affiliate` via `public.fact_transaction.affiliate_key`. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | — | Not specified | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend/Third-party |  |  |
+| raw_import_cache.affiliateGroupMapping | Not specified in provided DataEng files | — | Not specified | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend/Third-party |  |  |
+| raw_import_cache.affiliateGroup | Not specified in provided DataEng files | name | Not specified | Raw column(s) used by the dimension load for `affiliate_group_name`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_group_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -718,17 +719,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joined to public.fact_transaction on affiliate_key.  
+**Notes:** public.dim_affiliate joined to public.fact_transaction. Value column: `public.dim_affiliate.affiliate_category_name`. Value source: `raw_import_cache.affiliateCategory.Category_nm`.
 
 <details>
 <summary>Lineage table for affiliate_category_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_category_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.affiliateCategory | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_category_name`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | [lookup] Reads `affiliate_category_name` from `public.dim_affiliate` via `public.fact_transaction.affiliate_key`. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | — | Not specified | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend/Third-party |  |  |
+| raw_import_cache.affiliateCategory | Not specified in provided DataEng files | Category_nm | Not specified | Raw column(s) used by the dimension load for `affiliate_category_name`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_category_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -745,17 +746,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joins public.fact_transaction on affiliate_key. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate.  
+**Notes:** public.dim_affiliate joins public.fact_transaction. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate. Value column: `public.dim_affiliate.affiliate_id`.
 
 <details>
 <summary>Lineage table for affiliate_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_id`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `affiliate_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] Reads `affiliate_id` from `public.dim_affiliate` via `public.fact_transaction.affiliate_key`. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `affiliate_id`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `affiliate_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -770,16 +771,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_channel joined to public.fact_transaction on channel_key.  
+**Notes:** public.dim_channel joined to public.fact_transaction. Value column: `public.dim_channel.channel_group`.
 
 <details>
 <summary>Lineage table for channel</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `channel`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies channel_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend |  | [lookup] Reads `channel` from `public.dim_channel` via `public.fact_transaction.channel_key`. |
+| raw_import_cache.transaction | Not specified in provided DataEng files | channel_cd | Not specified | Raw column(s) used by the dimension load for `channel`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend |  | [lookup] Reads the field value from `public.dim_channel.channel_group`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -794,16 +795,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_channel joined to public.fact_transaction on channel_key.  
+**Notes:** public.dim_channel joined to public.fact_transaction. Value column: `public.dim_channel.channel_name`.
 
 <details>
 <summary>Lineage table for channel_ungrouped</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `channel_ungrouped`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies channel_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | [lookup] Reads `channel_name` from `public.dim_channel`. |
+| raw_import_cache.transaction | Not specified in provided DataEng files | channel_cd | Not specified | Raw column(s) used by the dimension load for `channel_ungrouped`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | [lookup] Reads the field value from `public.dim_channel.channel_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -822,18 +823,19 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Active movieDetail is primary; movieDetailDeleted fills absent active records, then showtime/showtimeTMS can create placeholder movie rows.  
+**Notes:** public.dim_movie joins public.fact_transaction. Active movieDetail is primary; movieDetailDeleted fills absent active records, then showtime/showtimeTMS can create placeholder movie rows. Value column: `public.dim_movie.movie_id`.
 
 <details>
 <summary>Lineage table for filmid_child</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmid_child`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmid_child`. |  | Backend/Third-party |  |  |
-| raw_import_cache.showtime and raw_import_cache.showtimeTMS |  | filmid_child |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | movie_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies movie_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend |  | [lookup] Reads `filmid_child` from `public.dim_movie` via `public.fact_transaction.movie_key`. |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | movie_detail_id | Not specified | Raw column(s) used by the dimension load for `filmid_child`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | movie_detail_id | Not specified | Raw column(s) used by the dimension load for `filmid_child`. | — | Backend/Third-party |  |  |
+| raw_import_cache.showtime | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Backend |  |  |
+| raw_import_cache.showtimeTMS | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -852,18 +854,19 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Active movieDetail is primary; movieDetailDeleted fills absent active records, then showtime/showtimeTMS can create placeholder titles.  
+**Notes:** public.dim_movie joins public.fact_transaction. Active movieDetail is primary; movieDetailDeleted fills absent active records, then showtime/showtimeTMS can create placeholder titles. Value column: `public.dim_movie.movie_title`.
 
 <details>
 <summary>Lineage table for filmname_child</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmname_child`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmname_child`. |  | Backend/Third-party |  |  |
-| raw_import_cache.showtime and raw_import_cache.showtimeTMS |  | filmname_child |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | movie_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies movie_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend |  | [lookup] Reads `filmname_child` from `public.dim_movie` via `public.fact_transaction.movie_key`. |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | title | Not specified | Raw column(s) used by the dimension load for `filmname_child`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | title | Not specified | Raw column(s) used by the dimension load for `filmname_child`. | — | Backend/Third-party |  |  |
+| raw_import_cache.showtime | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Backend |  |  |
+| raw_import_cache.showtimeTMS | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_title`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -882,18 +885,20 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. A non-null movieParentOverride wins; otherwise DataEng matches a title prefix and release date. If there is no match (or an override maps to itself), it uses the child movie ID.  
+**Notes:** public.dim_movie joins public.fact_transaction. A non-null movieParentOverride wins; otherwise DataEng matches a title prefix and release date. If there is no match (or an override maps to itself), it uses the child movie ID. Value column: `public.dim_movie.movie_parent_id`.
 
 <details>
 <summary>Lineage table for filmid_parent</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieParentOverride | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmid_parent`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmid_parent`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted, raw_import_cache.showtime, and raw_import_cache.showtimeTMS |  | filmid_parent |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | movie_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies movie_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend |  | [lookup] Reads `filmid_parent` from `public.dim_movie` via `public.fact_transaction.movie_key`. |
+| raw_import_cache.movieParentOverride | Not specified in provided DataEng files | movie_parent_id | Not specified | Raw column(s) used by the dimension load for `filmid_parent`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | movie_detail_id, title, date_released | Not specified | Raw column(s) used by the dimension load for `filmid_parent`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Backend/Third-party |  |  |
+| raw_import_cache.showtime | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Backend |  |  |
+| raw_import_cache.showtimeTMS | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_parent_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -912,18 +917,20 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. A non-null movieParentOverride selects the parent ID; otherwise DataEng matches a title prefix and release date, then defaults to the child movie. Deleted details and showtime placeholders cover missing active details.  
+**Notes:** public.dim_movie joins public.fact_transaction. A non-null movieParentOverride selects the parent ID; otherwise DataEng matches a title prefix and release date, then defaults to the child movie. Deleted details and showtime placeholders cover missing active details. Value column: `public.dim_movie.movie_parent_title`.
 
 <details>
 <summary>Lineage table for filmname_parent</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmname_parent`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieParentOverride | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `filmname_parent`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted, raw_import_cache.showtime, and raw_import_cache.showtimeTMS |  | filmname_parent |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | movie_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies movie_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend |  | [lookup] Reads `filmname_parent` from `public.dim_movie` via `public.fact_transaction.movie_key`. |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | title, date_released | Not specified | Raw column(s) used by the dimension load for `filmname_parent`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieParentOverride | Not specified in provided DataEng files | movie_parent_id | Not specified | Raw column(s) used by the dimension load for `filmname_parent`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Backend/Third-party |  |  |
+| raw_import_cache.showtime | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Backend |  |  |
+| raw_import_cache.showtimeTMS | Not specified in provided DataEng files | movie_detail_id | Not specified in provided DataEng files | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_parent_title`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -940,17 +947,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Active movieDetail is primary; movieDetailDeleted supplies the release date when no active detail exists.  
+**Notes:** public.dim_movie joins public.fact_transaction. Active movieDetail is primary; movieDetailDeleted supplies the release date when no active detail exists. Value column: `public.dim_movie.movie_release_date`.
 
 <details>
 <summary>Lineage table for releasedate</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `releasedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `releasedate`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | movie_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies movie_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend |  | [lookup] Reads `releasedate` from `public.dim_movie` via `public.fact_transaction.movie_key`. |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | date_released | Not specified | Raw column(s) used by the dimension load for `releasedate`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | date_released | Not specified | Raw column(s) used by the dimension load for `releasedate`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_release_date`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -967,17 +974,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction on movie_key. Active movieDetail is primary; movieDetailDeleted supplies the TMS ID when no active detail exists.  
+**Notes:** public.dim_movie joins public.fact_transaction. Active movieDetail is primary; movieDetailDeleted supplies the TMS ID when no active detail exists. Value column: `public.dim_movie.movie_tms_id`.
 
 <details>
 <summary>Lineage table for movie_tms_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.movieDetail | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `movie_tms_id`. |  | Backend/Third-party |  |  |
-| raw_import_cache.movieDetailDeleted | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `movie_tms_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | movie_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies movie_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party |  | [lookup] Reads `movie_tms_id` from `public.dim_movie` via `public.fact_transaction.movie_key`. |
+| raw_import_cache.movieDetail | Not specified in provided DataEng files | tms_movie_id | Not specified | Raw column(s) used by the dimension load for `movie_tms_id`. | — | Backend/Third-party |  |  |
+| raw_import_cache.movieDetailDeleted | Not specified in provided DataEng files | tms_movie_id | Not specified | Raw column(s) used by the dimension load for `movie_tms_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party |  | [lookup] Reads the field value from `public.dim_movie.movie_tms_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -994,17 +1001,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_chain joins public.fact_transaction on chain_key. Primary: raw_import_cache.chain; raw_import_cache.theater supplies Chain_id as chain_name when the chain row is absent.  
+**Notes:** public.dim_chain joins public.fact_transaction. Primary: raw_import_cache.chain; raw_import_cache.theater supplies Chain_id as chain_name when the chain row is absent. Value column: `public.dim_chain.chain_name`.
 
 <details>
 <summary>Lineage table for chainname</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.chain | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `chainname`. |  | Backend |  |  |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `chainname`. |  | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | chain_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies chain_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend |  | [lookup] Reads `chainname` from `public.dim_chain` via `public.fact_transaction.chain_key`. |
+| raw_import_cache.chain | Not specified in provided DataEng files | chain_name | Not specified | Raw column(s) used by the dimension load for `chainname`. | — | Backend |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | Chain_id | Not specified | Raw column(s) used by the dimension load for `chainname`. | — | Backend |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend |  | [lookup] Reads the field value from `public.dim_chain.chain_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1021,17 +1028,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_chain joins public.fact_transaction on chain_key. Primary: raw_import_cache.chain; raw_import_cache.theater supplies missing chain IDs.  
+**Notes:** public.dim_chain joins public.fact_transaction. Primary: raw_import_cache.chain; raw_import_cache.theater supplies missing chain IDs. Value column: `public.dim_chain.chain_id`.
 
 <details>
 <summary>Lineage table for chainid</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.chain | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `chainid`. |  | Backend |  |  |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `chainid`. |  | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | chain_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies chain_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend |  | [lookup] Reads `chainid` from `public.dim_chain` via `public.fact_transaction.chain_key`. |
+| raw_import_cache.chain | Not specified in provided DataEng files | chainid | Not specified | Raw column(s) used by the dimension load for `chainid`. | — | Backend |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | Chain_id | Not specified | Raw column(s) used by the dimension load for `chainid`. | — | Backend |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend |  | [lookup] Reads the field value from `public.dim_chain.chain_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1046,16 +1053,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_chain joined to public.fact_transaction on chain_key. Source: raw_import_cache.chain.  
+**Notes:** public.dim_chain joined to public.fact_transaction. Source: raw_import_cache.chain. Value column: `public.dim_chain.point_of_sale_vendor`.
 
 <details>
 <summary>Lineage table for pos_vendor</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.chain | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `pos_vendor`. |  | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | chain_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies chain_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party |  | [lookup] Reads `pos_vendor` from `public.dim_chain` via `public.fact_transaction.chain_key`. |
+| raw_import_cache.chain | Not specified in provided DataEng files | pos_vendor | Not specified | Raw column(s) used by the dimension load for `pos_vendor`. | — | Backend |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party |  | [lookup] Reads the field value from `public.dim_chain.point_of_sale_vendor`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1070,16 +1077,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_chain joined to public.fact_transaction on chain_key. Source: raw_import_cache.chain.  
+**Notes:** public.dim_chain joined to public.fact_transaction. Source: raw_import_cache.chain. Value column: `public.dim_chain.awards_program_name`.
 
 <details>
 <summary>Lineage table for awards_program_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.chain | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `awards_program_name`. |  | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | chain_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies chain_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend |  | [lookup] Reads `awards_program_name` from `public.dim_chain` via `public.fact_transaction.chain_key`. |
+| raw_import_cache.chain | Not specified in provided DataEng files | Program_nm | Not specified | Raw column(s) used by the dimension load for `awards_program_name`. | — | Backend |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend |  | [lookup] Reads the field value from `public.dim_chain.awards_program_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1094,16 +1101,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.theater_id`.
 
 <details>
 <summary>Lineage table for theater_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `theater_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend |  | [lookup] Reads `theater_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Theater_pkey | Not specified | Raw column(s) used by the dimension load for `theater_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1118,16 +1125,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.theater_code`.
 
 <details>
 <summary>Lineage table for theater_code</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `theater_code`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend |  | [lookup] Reads `theater_code` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Theater_id | Not specified | Raw column(s) used by the dimension load for `theater_code`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_code`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1142,16 +1149,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.theater_name`.
 
 <details>
 <summary>Lineage table for theater_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `theater_name`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend |  | [lookup] Reads `theater_name` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Theater_nm | Not specified | Raw column(s) used by the dimension load for `theater_name`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1166,16 +1173,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.pdi_id`.
 
 <details>
 <summary>Lineage table for pdi_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `pdi_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend |  | [lookup] Reads `pdi_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Pdiid | Not specified | Raw column(s) used by the dimension load for `pdi_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend |  | [lookup] Reads the field value from `public.dim_theater.pdi_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1190,16 +1197,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.point_of_sale_theater_id`.
 
 <details>
 <summary>Lineage table for pos_theater_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `pos_theater_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend |  | [lookup] Reads `pos_theater_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | POS_theater_id | Not specified | Raw column(s) used by the dimension load for `pos_theater_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend |  | [lookup] Reads the field value from `public.dim_theater.point_of_sale_theater_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1216,17 +1223,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current non-zero raw_import_cache.theater latitude is primary; the dimension ETL retains the prior non-zero value otherwise. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current non-zero raw_import_cache.theater latitude is primary; the dimension ETL retains the prior non-zero value otherwise. This is a dimension-side fallback. Value column: `public.dim_theater.latitude`.
 
 <details>
 <summary>Lineage table for latitude</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `latitude`. |  | Backend/Third-party |  |  |
-| public.dim_theater |  | latitude |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | [lookup] Reads `latitude` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Lat_rl | Not specified | Raw column(s) used by the dimension load for `latitude`. | — | Backend/Third-party |  |  |
+| public.dim_theater | 1 row / theater_id | latitude | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | [lookup] Reads the field value from `public.dim_theater.latitude`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1243,17 +1250,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current non-zero raw_import_cache.theater longitude is primary; the dimension ETL retains the prior non-zero value otherwise. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current non-zero raw_import_cache.theater longitude is primary; the dimension ETL retains the prior non-zero value otherwise. This is a dimension-side fallback. Value column: `public.dim_theater.longitude`.
 
 <details>
 <summary>Lineage table for longitude</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `longitude`. |  | Backend/Third-party |  |  |
-| public.dim_theater |  | longitude |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | [lookup] Reads `longitude` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Long_rl | Not specified | Raw column(s) used by the dimension load for `longitude`. | — | Backend/Third-party |  |  |
+| public.dim_theater | 1 row / theater_id | longitude | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | [lookup] Reads the field value from `public.dim_theater.longitude`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1268,16 +1275,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.point_of_sale_id`.
 
 <details>
 <summary>Lineage table for point_of_sale_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `point_of_sale_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend |  | [lookup] Reads `point_of_sale_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | POS_id | Not specified | Raw column(s) used by the dimension load for `point_of_sale_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend |  | [lookup] Reads the field value from `public.dim_theater.point_of_sale_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1294,17 +1301,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater address is primary; the dimension ETL retains its prior non-null address when the incoming address is absent. This is a dimension-side fallback, not a permanent fact-flow step.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater address is primary; the dimension ETL retains its prior non-null address when the incoming address is absent. This is a dimension-side fallback, not a permanent fact-flow step. Value column: `public.dim_theater.address_1`.
 
 <details>
 <summary>Lineage table for address_1</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `address_1`. |  | Backend/Third-party |  |  |
-| public.dim_theater |  | address_1 |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | [lookup] Reads `address_1` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Address1_nm | Not specified | Raw column(s) used by the dimension load for `address_1`. | — | Backend/Third-party |  |  |
+| public.dim_theater | 1 row / theater_id | address_1 | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | [lookup] Reads the field value from `public.dim_theater.address_1`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1321,17 +1328,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater address is primary; the dimension ETL retains its prior non-null address when the incoming address is absent. This is a dimension-side fallback, not a permanent fact-flow step.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater address is primary; the dimension ETL retains its prior non-null address when the incoming address is absent. This is a dimension-side fallback, not a permanent fact-flow step. Value column: `public.dim_theater.address_2`.
 
 <details>
 <summary>Lineage table for address_2</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `address_2`. |  | Backend/Third-party |  |  |
-| public.dim_theater |  | address_2 |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | [lookup] Reads `address_2` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Address2_nm | Not specified | Raw column(s) used by the dimension load for `address_2`. | — | Backend/Third-party |  |  |
+| public.dim_theater | 1 row / theater_id | address_2 | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | [lookup] Reads the field value from `public.dim_theater.address_2`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1348,17 +1355,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater city is primary; the dimension ETL retains its prior non-null city when the incoming value is absent. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater city is primary; the dimension ETL retains its prior non-null city when the incoming value is absent. This is a dimension-side fallback. Value column: `public.dim_theater.city_name`.
 
 <details>
 <summary>Lineage table for city_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `city_name`. |  | Backend/Third-party |  |  |
-| public.dim_theater |  | city_name |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | [lookup] Reads `city_name` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | City_nm | Not specified | Raw column(s) used by the dimension load for `city_name`. | — | Backend/Third-party |  |  |
+| public.dim_theater | 1 row / theater_id | city_name | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | [lookup] Reads the field value from `public.dim_theater.city_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1375,17 +1382,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater state is primary; the dimension ETL retains its prior non-null state when the incoming value is absent. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater state is primary; the dimension ETL retains its prior non-null state when the incoming value is absent. This is a dimension-side fallback. Value column: `public.dim_theater.state_code`.
 
 <details>
 <summary>Lineage table for state_code</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `state_code`. |  | Backend/Third-party |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | State_cd | Not specified | Raw column(s) used by the dimension load for `state_code`. | — | Backend/Third-party |  |  |
 | public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | [lookup] Reads `state_code` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | [lookup] Reads the field value from `public.dim_theater.state_code`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1402,17 +1409,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater ZIP is primary; the dimension ETL retains its prior non-null ZIP when the incoming value is absent. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater ZIP is primary; the dimension ETL retains its prior non-null ZIP when the incoming value is absent. This is a dimension-side fallback. Value column: `public.dim_theater.zip_code`.
 
 <details>
 <summary>Lineage table for zip_code</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `zip_code`. |  | Backend/Third-party |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | Zip_cd | Not specified | Raw column(s) used by the dimension load for `zip_code`. | — | Backend/Third-party |  |  |
 | public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | [lookup] Reads `zip_code` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | [lookup] Reads the field value from `public.dim_theater.zip_code`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1429,17 +1436,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater country is primary; the dimension ETL retains its prior non-null country when the incoming value is absent. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater country is primary; the dimension ETL retains its prior non-null country when the incoming value is absent. This is a dimension-side fallback. Value column: `public.dim_theater.country_code`.
 
 <details>
 <summary>Lineage table for country_code</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `country_code`. |  | Backend/Third-party |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | Country_cd | Not specified | Raw column(s) used by the dimension load for `country_code`. | — | Backend/Third-party |  |  |
 | public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | [lookup] Reads `country_code` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | [lookup] Reads the field value from `public.dim_theater.country_code`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1454,16 +1461,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.alternate_theater_phone_name`.
 
 <details>
 <summary>Lineage table for tht_alternate_theater_phone_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `tht_alternate_theater_phone_name`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend |  | [lookup] Reads `tht_alternate_theater_phone_name` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | AltTheaterPhone_nm | Not specified | Raw column(s) used by the dimension load for `tht_alternate_theater_phone_name`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend |  | [lookup] Reads the field value from `public.dim_theater.alternate_theater_phone_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1478,16 +1485,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.chain_specific_site_id`.
 
 <details>
 <summary>Lineage table for chain_specific_site_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `chain_specific_site_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend |  | [lookup] Reads `chain_specific_site_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | ChainSpecificSite_id | Not specified | Raw column(s) used by the dimension load for `chain_specific_site_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend |  | [lookup] Reads the field value from `public.dim_theater.chain_specific_site_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1502,16 +1509,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.paymentech_terminal_id`.
 
 <details>
 <summary>Lineage table for paymentech_terminal_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `paymentech_terminal_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party |  | [lookup] Reads `paymentech_terminal_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | PaymentechTerminal_id | Not specified | Raw column(s) used by the dimension load for `paymentech_terminal_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party |  | [lookup] Reads the field value from `public.dim_theater.paymentech_terminal_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1526,16 +1533,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.cybersource_terminal_id`.
 
 <details>
 <summary>Lineage table for cybersource_terminal_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `cybersource_terminal_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party |  | [lookup] Reads `cybersource_terminal_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | CybersourceTerminal_id | Not specified | Raw column(s) used by the dimension load for `cybersource_terminal_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party |  | [lookup] Reads the field value from `public.dim_theater.cybersource_terminal_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1550,16 +1557,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.screen_count`.
 
 <details>
 <summary>Lineage table for screen_count</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `screen_count`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | [lookup] Reads `screen_count` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Screens_nb | Not specified | Raw column(s) used by the dimension load for `screen_count`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | [lookup] Reads the field value from `public.dim_theater.screen_count`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1574,16 +1581,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key.  
+**Notes:** public.dim_theater joined to public.fact_transaction. Value column: `public.dim_theater.seat_count`.
 
 <details>
 <summary>Lineage table for seat_count</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `seat_count`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | [lookup] Reads `seat_count` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Seats_nb | Not specified | Raw column(s) used by the dimension load for `seat_count`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | [lookup] Reads the field value from `public.dim_theater.seat_count`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1602,18 +1609,18 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. postalCodeTimeZone supplies the time-zone name from the theater ZIP. If an incoming row has no ZIP, the dimension ETL carries forward the prior ZIP and resolves its time zone; without a ZIP, the value can be null. This stays documented as a dimension side flow.  
+**Notes:** public.dim_theater joins public.fact_transaction. postalCodeTimeZone supplies the time-zone name from the theater ZIP. If an incoming row has no ZIP, the dimension ETL carries forward the prior ZIP and resolves its time zone; without a ZIP, the value can be null. This stays documented as a dimension side flow. Value column: `public.dim_theater.theater_time_zone_name`. Value source: `raw_import_cache.postalCodeTimeZone.time_zone_name`; the theater ZIP selects the lookup value.
 
 <details>
 <summary>Lineage table for theater_time_zone_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.postalCodeTimeZone | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `theater_time_zone_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `theater_time_zone_name`. |  | Backend/Third-party |  |  |
+| raw_import_cache.postalCodeTimeZone | Not specified in provided DataEng files | time_zone_name | Not specified | Raw column(s) used by the dimension load for `theater_time_zone_name`. | — | Backend/Third-party |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | — | Not specified | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend/Third-party |  |  |
 | public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | [lookup] Reads `theater_time_zone_name` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_time_zone_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1630,7 +1637,7 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction on theater_key; designatedMarketArea joins on zip_code.  
+**Notes:** public.dim_theater joined to public.fact_transaction; designatedMarketArea joins on zip_code. Value column: `raw_import_cache.designatedMarketArea.market_name`.
 
 <details>
 <summary>Lineage table for dma_market_name</summary>
@@ -1641,7 +1648,7 @@ flowchart LR
 | raw_import_cache.designatedMarketArea | 1 row / zip_code | market_name | varchar | ZIP to DMA mapping | 90028 / Los Angeles | Third-party |  | External DMA source used in analytics join. |
 | raw_import_cache.theater | dimension source grain | names | mixed | Raw sources for public dimensions used in projection | — | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | charity_name | varchar(256) | Charity name associated with the transaction | Save The Arts | Backend |  | [passthrough] Copies `charity_name` from `warehouse_loader.fact_transaction_base`. |
-| analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] Matches theater ZIP to `raw_import_cache.designatedMarketArea`. |
+| analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] Reads the field value from `raw_import_cache.designatedMarketArea.market_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1660,18 +1667,18 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_transaction_type joined to public.fact_transaction on transaction_type_key.  
+**Notes:** public.dim_transaction_type joined to public.fact_transaction. Value column: `public.dim_transaction_type.transaction_type_id`.
 
 <details>
 <summary>Lineage table for transaction_type_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionPayment | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `transaction_type_id`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transactionItem | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `transaction_type_id`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `transaction_type_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | transaction_type_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies transaction_type_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend |  | [lookup] Reads `transaction_type_id` from `public.dim_transaction_type` via `public.fact_transaction.transaction_type_key`. |
+| raw_import_cache.transactionPayment | Not specified in provided DataEng files | transaction_tp | Not specified | Raw column(s) used by the dimension load for `transaction_type_id`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transactionItem | Not specified in provided DataEng files | transaction_tp | Not specified | Raw column(s) used by the dimension load for `transaction_type_id`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | transaction_tp | Not specified | Raw column(s) used by the dimension load for `transaction_type_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend |  | [lookup] Reads the field value from `public.dim_transaction_type.transaction_type_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1690,18 +1697,18 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_transaction_type joined to public.fact_transaction on transaction_type_key.  
+**Notes:** public.dim_transaction_type joined to public.fact_transaction. Value column: `public.dim_transaction_type.transaction_type_name`.
 
 <details>
 <summary>Lineage table for transaction_type_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionPayment | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `transaction_type_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transactionItem | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `transaction_type_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `transaction_type_name`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | transaction_type_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies transaction_type_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend |  | [lookup] Reads `transaction_type_name` from `public.dim_transaction_type` via `public.fact_transaction.transaction_type_key`. |
+| raw_import_cache.transactionPayment | Not specified in provided DataEng files | transaction_tp | Not specified | Raw column(s) used by the dimension load for `transaction_type_name`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transactionItem | Not specified in provided DataEng files | transaction_tp | Not specified | Raw column(s) used by the dimension load for `transaction_type_name`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | transaction_tp | Not specified | Raw column(s) used by the dimension load for `transaction_type_name`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend |  | [lookup] Reads the field value from `public.dim_transaction_type.transaction_type_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1716,16 +1723,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_user_agent joined to public.fact_transaction on user_agent_key.  
+**Notes:** public.dim_user_agent joined to public.fact_transaction. Value column: `public.dim_user_agent.user_agent_id`.
 
 <details>
 <summary>Lineage table for user_agent_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `user_agent_id`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | user_agent_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies user_agent_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend |  | [lookup] Reads `user_agent_id` from `public.dim_user_agent` via `public.fact_transaction.user_agent_key`. |
+| raw_import_cache.transaction | Not specified in provided DataEng files | useragent_nm | Not specified | Raw column(s) used by the dimension load for `user_agent_id`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend |  | [lookup] Reads the field value from `public.dim_user_agent.user_agent_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1740,16 +1747,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_user_agent joined to public.fact_transaction on user_agent_key.  
+**Notes:** public.dim_user_agent joined to public.fact_transaction. Value column: `public.dim_user_agent.user_agent_description`.
 
 <details>
 <summary>Lineage table for user_agent_description</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `user_agent_description`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | user_agent_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies user_agent_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend |  | [lookup] Reads `user_agent_description` from `public.dim_user_agent` via `public.fact_transaction.user_agent_key`. |
+| raw_import_cache.transaction | Not specified in provided DataEng files | useragent_nm | Not specified | Raw column(s) used by the dimension load for `user_agent_description`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend |  | [lookup] Reads the field value from `public.dim_user_agent.user_agent_description`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1764,17 +1771,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_purchase_funnel joined to public.fact_transaction on purchase_funnel_key.  
+**Notes:** public.dim_purchase_funnel joined to public.fact_transaction. Value column: `public.dim_purchase_funnel.purchase_funnel_id`.
 
 <details>
 <summary>Lineage table for purchase_funnel_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionPurchaseFunnel | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `purchase_funnel_id`. |  | Backend/Third-party |  |  |
+| raw_import_cache.transactionPurchaseFunnel | Not specified in provided DataEng files | Funnel_cd | Not specified | Raw column(s) used by the dimension load for `purchase_funnel_id`. | — | Backend/Third-party |  |  |
 | raw_import_cache.transactionPurchaseFunnel | 1 row / tx | Funnel_cd | varchar | Funnel code | 14 | Backend |  | Input to purchase_funnel_key. |
-| public.fact_transaction | 1 row / transaction_guid | purchase_funnel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies purchase_funnel_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend |  | [lookup] Reads `purchase_funnel_id` from `public.dim_purchase_funnel` via `public.fact_transaction.purchase_funnel_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend |  | [lookup] Reads the field value from `public.dim_purchase_funnel.purchase_funnel_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1789,17 +1796,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_purchase_funnel joined to public.fact_transaction on purchase_funnel_key.  
+**Notes:** public.dim_purchase_funnel joined to public.fact_transaction. Value column: `public.dim_purchase_funnel.purchase_funnel_name`.
 
 <details>
 <summary>Lineage table for purchase_funnel_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionPurchaseFunnel | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `purchase_funnel_name`. |  | Backend/Third-party |  |  |
+| raw_import_cache.transactionPurchaseFunnel | Not specified in provided DataEng files | Funnel_cd | Not specified | Raw column(s) used by the dimension load for `purchase_funnel_name`. | — | Backend/Third-party |  |  |
 | raw_import_cache.transactionPurchaseFunnel | 1 row / tx | Funnel_cd | varchar | Funnel code | 14 | Backend |  | Input to purchase_funnel_key. |
-| public.fact_transaction | 1 row / transaction_guid | purchase_funnel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies purchase_funnel_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend |  | [lookup] Reads `purchase_funnel_name` from `public.dim_purchase_funnel` via `public.fact_transaction.purchase_funnel_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend |  | [lookup] Reads the field value from `public.dim_purchase_funnel.purchase_funnel_name`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1814,16 +1821,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_return_type joined to public.fact_transaction on return_type_key.  
+**Notes:** public.dim_return_type joined to public.fact_transaction. Value column: `public.dim_return_type.return_method`.
 
 <details>
 <summary>Lineage table for return_method</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.returnType | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `return_method`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | return_type_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies return_type_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | [lookup] Reads `return_method` from `public.dim_return_type` via `public.fact_transaction.return_type_key`. |
+| raw_import_cache.returnType | Not specified in provided DataEng files | returnMethod | Not specified | Raw column(s) used by the dimension load for `return_method`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | [lookup] Reads the field value from `public.dim_return_type.return_method`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1838,16 +1845,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_return_type joined to public.fact_transaction on return_type_key.  
+**Notes:** public.dim_return_type joined to public.fact_transaction. Value column: `public.dim_return_type.return_type_code`.
 
 <details>
 <summary>Lineage table for return_type_code</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.returnType | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `return_type_code`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | return_type_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies return_type_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | [lookup] Reads `return_type_code` from `public.dim_return_type` via `public.fact_transaction.return_type_key`. |
+| raw_import_cache.returnType | Not specified in provided DataEng files | returnTypeCode | Not specified | Raw column(s) used by the dimension load for `return_type_code`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | [lookup] Reads the field value from `public.dim_return_type.return_type_code`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1862,16 +1869,16 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_return_type joined to public.fact_transaction on return_type_key.  
+**Notes:** public.dim_return_type joined to public.fact_transaction. Value column: `public.dim_return_type.return_type_description`.
 
 <details>
 <summary>Lineage table for return_type_description</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.returnType | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `return_type_description`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | return_type_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies return_type_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | [lookup] Reads `return_type_description` from `public.dim_return_type` via `public.fact_transaction.return_type_key`. |
+| raw_import_cache.returnType | Not specified in provided DataEng files | returnTypeDescription | Not specified | Raw column(s) used by the dimension load for `return_type_description`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | [lookup] Reads the field value from `public.dim_return_type.return_type_description`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -1888,17 +1895,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joins public.fact_transaction on affiliate_key. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate.  
+**Notes:** public.dim_affiliate joins public.fact_transaction. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate. Value column: `CASE using public.dim_affiliate.affiliate_id`.
 
 <details>
 <summary>Lineage table for Affiliate Grouping</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `Affiliate Grouping`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `Affiliate Grouping`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| public.fact_transaction | 1 row / transaction_guid | channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies channel_key from warehouse_loader.fact_transaction_base. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `Affiliate Grouping`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `Affiliate Grouping`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping" | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] Buckets affiliate IDs into reporting groups with CASE rules. |
 
 </details>
@@ -1916,17 +1923,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_affiliate joins public.fact_transaction on affiliate_key. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate.  
+**Notes:** public.dim_affiliate joins public.fact_transaction. Primary: raw_import_cache.affiliate; raw_import_cache.transaction seeds IDs missing from affiliate. Value column: `CASE using public.dim_affiliate.affiliate_id`.
 
 <details>
 <summary>Lineage table for Affiliate Grouping - HIGH LEVEL BINS</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `Affiliate Grouping - HIGH LEVEL BINS`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `Affiliate Grouping - HIGH LEVEL BINS`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| public.fact_transaction | 1 row / transaction_guid | channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies channel_key from warehouse_loader.fact_transaction_base. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `Affiliate Grouping - HIGH LEVEL BINS`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `Affiliate Grouping - HIGH LEVEL BINS`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping - HIGH LEVEL BINS" | varchar(256) | High-level bucket | Fandango O&O | Derived |  | [conditional] Groups affiliate IDs into high-level reporting bins. |
 
 </details>
@@ -1944,17 +1951,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** Analytics derives `apps` from `dim_affiliate.affiliate_id` using CASE rules. public.dim_affiliate joins public.fact_transaction on affiliate_key; raw_import_cache.affiliate supplies affiliate details, and raw_import_cache.transaction seeds IDs not present in affiliate.  
+**Notes:** Analytics derives `apps` from `dim_affiliate.affiliate_id` using CASE rules. public.dim_affiliate joins public.fact_transaction; raw_import_cache.affiliate supplies affiliate details, and raw_import_cache.transaction seeds IDs not present in affiliate. Value column: `CASE using public.dim_affiliate.affiliate_id`.
 
 <details>
 <summary>Lineage table for apps</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `apps`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `apps`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| public.fact_transaction | 1 row / transaction_guid | channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies channel_key from warehouse_loader.fact_transaction_base. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `apps`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `apps`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | analytics.transactions_data_source | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  | [conditional] Classifies app types from affiliate IDs. |
 
 </details>
@@ -1972,17 +1979,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** Analytics derives `platform` from `dim_channel.channel_name` and `dim_affiliate.affiliate_id` using CASE rules. Both dimensions join to public.fact_transaction; raw_import_cache.transaction supplies channel IDs and seeds affiliate IDs not present in raw_import_cache.affiliate.  
+**Notes:** Analytics derives `platform` from `dim_channel.channel_name` and `dim_affiliate.affiliate_id` using CASE rules. Both dimensions join to public.fact_transaction; raw_import_cache.transaction supplies channel IDs and seeds affiliate IDs not present in raw_import_cache.affiliate. Value column: `CASE using public.dim_channel.channel_name and public.dim_affiliate.affiliate_id`.
 
 <details>
 <summary>Lineage table for platform</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.affiliate | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `platform`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `platform`. |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | affiliate_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies affiliate_key from warehouse_loader.fact_transaction_base. |
-| public.fact_transaction | 1 row / transaction_guid | channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies channel_key from warehouse_loader.fact_transaction_base. |
+| raw_import_cache.affiliate | Not specified in provided DataEng files | affiliate_id | Not specified | Raw column(s) used by the dimension load for `platform`. | — | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | affiliate_id, channel_cd | Not specified | Raw column(s) used by the dimension load for `platform`. | — | Backend/Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | analytics.transactions_data_source | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  | [conditional] Classifies platform from channel and affiliate IDs. |
 
 </details>
@@ -2488,17 +2495,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_property joins public.fact_transaction on property_key. For refunds with no property on the refund transaction, the refund mapping supplies the parent purchase transaction whose property is used.  
+**Notes:** public.dim_property joins public.fact_transaction. For refunds with no property on the refund transaction, the refund mapping supplies the parent purchase transaction whose property is used. Value column: `public.dim_property.property_id`. Refund fallback follows the parent transaction to its property value. Refund fallback follows the parent transaction to its property value.
 
 <details>
 <summary>Lineage table for property_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `property_id`. |  | Backend/Third-party |  |  |
-| raw_import_cache.refund |  | property_id |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | property_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies property_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] Reads `property_id` from `public.dim_property` via `public.fact_transaction.property_key`. |
+| raw_import_cache.transaction | Not specified in provided DataEng files | Property_nm | Not specified | Raw column(s) used by the dimension load for `property_id`. | — | Backend/Third-party |  |  |
+| raw_import_cache.refund | Not specified in provided DataEng files | — | Not specified in provided DataEng files | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] Reads the field value from `public.dim_property.property_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -2540,17 +2547,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joins public.fact_transaction on theater_key. Current raw_import_cache.theater merchant ID is primary; the dimension ETL retains the prior value when the incoming value is absent. This is a dimension-side fallback.  
+**Notes:** public.dim_theater joins public.fact_transaction. Current raw_import_cache.theater merchant ID is primary; the dimension ETL retains the prior value when the incoming value is absent. This is a dimension-side fallback. Value column: `public.dim_theater.braintree_merchant_id`.
 
 <details>
 <summary>Lineage table for braintree_merchant_id</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.theater | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `braintree_merchant_id`. |  | Backend/Third-party |  |  |
-| public.dim_theater |  | braintree_merchant_id |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | theater_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies theater_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party |  | [lookup] Reads `braintree_merchant_id` from `public.dim_theater` via `public.fact_transaction.theater_key`. |
+| raw_import_cache.theater | Not specified in provided DataEng files | Braintree_Merchant_id | Not specified | Raw column(s) used by the dimension load for `braintree_merchant_id`. | — | Backend/Third-party |  |  |
+| public.dim_theater | 1 row / theater_id | braintree_merchant_id | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party |  | [lookup] Reads the field value from `public.dim_theater.braintree_merchant_id`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -2623,7 +2630,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | sales_fee_tax_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -2654,7 +2661,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | returned_sales_fee_tax_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `returned_sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -2685,7 +2692,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | sales_fee_tax_return_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
@@ -2716,7 +2723,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | sales_fee_tax_amount_for_returned_purchase |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
 
@@ -2747,7 +2754,7 @@ flowchart LR
   n2_0 --> n3_0
 ```
 
-**Notes:** public.dim_theater is used during the warehouse_loader.fact_transaction_base build; its pdi_id contributes to the is_test condition.  
+**Notes:** public.dim_theater is used during the warehouse_loader.fact_transaction_base build; its pdi_id contributes to the is_test condition. Test status uses the transaction test flag and theater PDI ID; refund linkage is contextual only. Test status uses the transaction test flag and theater PDI ID; refund linkage is contextual only.
 
 <details>
 <summary>Lineage table for is_test</summary>
@@ -2762,9 +2769,9 @@ flowchart LR
 | raw_import_cache.testTransactionEmailList | 1 row / TestTransactionEmailList_id | email_tx | varchar(100) | Test email address or pattern | loadtester_%@fandango.com | Backend |  | [passthrough] Reads `email_tx` from `raw_import_cache.testTransactionEmailList`. |
 | raw_import_cache.testTransactionEmailList | 1 row / TestTransactionEmailList_id | active_bt | boolean | Whether the test-email rule is enabled | true | Backend |  | [passthrough] Reads `active_bt` from `raw_import_cache.testTransactionEmailList`. |
 | raw_import_cache.testTransactionEmailList | 1 row / TestTransactionEmailList_id | pattern_bt | boolean | Whether the email rule is a pattern | true | Backend |  | [passthrough] Reads `pattern_bt` from `raw_import_cache.testTransactionEmailList`. |
-| raw_import_cache.refund |  | is_test |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend |  |  |
+| raw_import_cache.refund | Not specified in provided DataEng files | — | Not specified in provided DataEng files | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend |  |  |
 | raw_import_cache.transactionPerformanceAttribute | 1 row / tx/perf | theater_pkey | int | Movie/theater ids | 10293/4451 | Backend |  | Inputs to movie/theater keys. |
-| raw_import_cache.theater |  | is_test |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
+| raw_import_cache.theater | Not specified in provided DataEng files | is_test | Not specified in provided DataEng files | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. | — | Backend/Third-party |  |  |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test transaction flag | false | Derived |  | [conditional] Flags committed, allowed, and theater/type test transactions. |
 | public.fact_transaction | 1 row / transaction_guid | is_test | boolean | Whether the transaction is classified as a test | false | Derived |  | [passthrough] Copies `is_test` from `warehouse_loader.fact_transaction_base`. |
 | analytics.transactions_data_source | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] Copies `is_test` from `public.fact_transaction`. |
@@ -3092,18 +3099,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_partner_channel joins public.fact_transaction on partner_channel_key. A transaction's own Channel attribute is primary; refunds inherit it from the parent purchase through raw_import_cache.refund when absent.  
+**Notes:** public.dim_partner_channel joins public.fact_transaction. A transaction's own Channel attribute is primary; refunds inherit it from the parent purchase through raw_import_cache.refund when absent. Source value: `raw_import_cache.transactionAttribute.value_tx` for the Channel attribute; refunds can inherit the parent purchase value.
 
 <details>
 <summary>Lineage table for partner_channel</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionAttribute | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `partner_channel`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx (Channel) | varchar | Partner mapping attrs | TMO/WEBVIEW | Third-party |  | Inputs to partner dimension keys; refund rows can fall back to parent-purchase attributes. |
-| raw_import_cache.refund |  | partner_channel |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | partner_channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies partner_channel_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party |  | [lookup] Reads `partner_channel` from `public.dim_partner_channel` via `public.fact_transaction.partner_channel_key`. |
+| raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx | varchar | Attribute value selected by its attribute name; `value_tx` supplies the field value. | TMO/WEBVIEW | Third-party |  | Inputs to partner dimension keys; refund rows can fall back to parent-purchase attributes. |
+| raw_import_cache.refund | Not specified in provided DataEng files | — | Not specified in provided DataEng files | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
 
@@ -3120,18 +3126,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_partner_channel joins public.fact_transaction on partner_channel_key. The display name follows the partner-channel ID; refunds can inherit that ID from the parent purchase through raw_import_cache.refund.  
+**Notes:** public.dim_partner_channel joins public.fact_transaction. The display name follows the partner-channel ID; refunds can inherit that ID from the parent purchase through raw_import_cache.refund. Source value: `raw_import_cache.transactionAttribute.value_tx` for the PartnerDisplayName attribute.
 
 <details>
 <summary>Lineage table for partner_display_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionAttribute | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `partner_display_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx (Channel) | varchar | Partner mapping attrs | TMO/WEBVIEW | Third-party |  | Inputs to partner dimension keys; refund rows can fall back to parent-purchase attributes. |
-| raw_import_cache.refund |  | partner_display_name |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | partner_channel_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies partner_channel_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party |  | [lookup] Reads `partner_display_name` from `public.dim_partner_channel` via `public.fact_transaction.partner_channel_key`. |
+| raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx | varchar | Attribute value selected by its attribute name; `value_tx` supplies the field value. | TMO/WEBVIEW | Third-party |  | Inputs to partner dimension keys; refund rows can fall back to parent-purchase attributes. |
+| raw_import_cache.refund | Not specified in provided DataEng files | — | Not specified in provided DataEng files | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Third-party |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
 
@@ -3148,18 +3153,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_partner_platform joins public.fact_transaction on partner_platform_key. A transaction's own PartnerPlatform attribute is primary; refunds inherit it from the parent purchase through raw_import_cache.refund when absent.  
+**Notes:** public.dim_partner_platform joins public.fact_transaction. A transaction's own PartnerPlatform attribute is primary; refunds inherit it from the parent purchase through raw_import_cache.refund when absent. Source value: `raw_import_cache.transactionAttribute.value_tx` for the PartnerPlatform attribute; refunds can inherit the parent purchase value.
 
 <details>
 <summary>Lineage table for partner_platform</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transactionAttribute | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `partner_platform`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx (PartnerPlatform) | varchar | Partner mapping attrs | TMO/WEBVIEW | Third-party |  | Inputs to partner dimension keys; refund rows can fall back to parent-purchase attributes. |
-| raw_import_cache.refund |  | partner_platform |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | partner_platform_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies partner_platform_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party |  | [lookup] Reads `partner_platform` from `public.dim_partner_platform` via `public.fact_transaction.partner_platform_key`. |
+| raw_import_cache.transactionAttribute | 1 row / tx + attr | value_tx | varchar | Attribute value selected by its attribute name; `value_tx` supplies the field value. | TMO/WEBVIEW | Third-party |  | Inputs to partner dimension keys; refund rows can fall back to parent-purchase attributes. |
+| raw_import_cache.refund | Not specified in provided DataEng files | — | Not specified in provided DataEng files | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend |  |  |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
 
@@ -3178,7 +3182,7 @@ flowchart LR
   n2_0 --> n3_0
 ```
 
-**Notes:** warehouse_loader.fact_transaction_base uses the transaction's own NetworkToken attribute first; for refunds it falls back to the parent purchase's attribute through raw_import_cache.refund.  
+**Notes:** warehouse_loader.fact_transaction_base uses the transaction's own NetworkToken attribute first; for refunds it falls back to the parent purchase's attribute through raw_import_cache.refund. Source value: `raw_import_cache.transactionAttribute.value_tx` for NetworkToken; refund fallback reads the parent purchase value.
 
 <details>
 <summary>Lineage table for network_token_usage</summary>
@@ -3187,7 +3191,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transactionAttribute | 1 row / transaction_guid + attribute_nm | Attribute_nm | varchar | Attribute key that identifies the value | UtmSource | Backend |  | [lookup] Selects the meaning of `Value_tx` in `raw_import_cache.transactionAttribute`. |
 | raw_import_cache.transactionAttribute | 1 row / transaction_guid + attribute_nm | Value_tx | varchar | Attribute value selected by Attribute_nm | Active | Backend |  | [passthrough] Reads `Value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
-| raw_import_cache.refund |  | network_token_usage |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend |  |  |
+| raw_import_cache.refund | Not specified in provided DataEng files | — | Not specified in provided DataEng files | Mapping-only input; the field value is supplied by the value column identified in Notes. | — | Backend |  |  |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | network_token_usage | boolean | Network-token usage flag | true | Derived |  | [conditional] Uses NetworkToken; refunds fall back to the parent purchase through `raw_import_cache.refund`. |
 | public.fact_transaction | 1 row / transaction_guid | network_token_usage | boolean | Whether network-token payment was used | true | Derived |  | [passthrough] Copies `network_token_usage` from `warehouse_loader.fact_transaction_base`. |
 | analytics.transactions_data_source | 1 row / transaction_guid | network_token_usage | boolean | Network token usage | true | Derived |  | [passthrough] Copies `network_token_usage` from `public.fact_transaction`. |
@@ -3207,17 +3211,17 @@ flowchart LR
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_property joins public.fact_transaction on property_key. For refunds with no property on the refund transaction, the refund mapping supplies the parent purchase transaction whose property group is used.  
+**Notes:** public.dim_property joins public.fact_transaction. For refunds with no property on the refund transaction, the refund mapping supplies the parent purchase transaction whose property group is used. Value column: `public.dim_property.property_group`.
 
 <details>
 <summary>Lineage table for property_group</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.transaction | Not specified per source table | Dimension source fields | Not specified | Raw source table for the dimension lookup that supplies `property_group`. |  | Backend/Third-party |  |  |
+| raw_import_cache.transaction | Not specified in provided DataEng files | Property_nm | Not specified | Raw column(s) used by the dimension load for `property_group`. | — | Backend/Third-party |  |  |
 | raw_import_cache.refund | 1 row / refund line | Price_at | numeric | Return-side financial values | — | Backend |  |  |
-| public.fact_transaction | 1 row / transaction_guid | property_key | bigint | Join key for dimension projection | — | ETL |  | `[passthrough]` Copies property_key from warehouse_loader.fact_transaction_base. |
-| analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend |  | [lookup] Reads `property_group` from `public.dim_property` via `public.fact_transaction.property_key`. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
+| analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend |  | [lookup] Reads the field value from `public.dim_property.property_group`; see Notes for dimension-side lineage. |
 
 </details>
 
@@ -3526,7 +3530,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | ticket_tax_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived |  | [passthrough] Copies `pr_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -3560,7 +3564,7 @@ flowchart LR
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales amount | 70.00 | Backend |  | [aggregate] Sums `item_count × item_amount` from `public.fact_transaction_item`. |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | pre_tax_ticket_sales_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 70.00 | Backend |  | [passthrough] Copies `item_sales_amount` from `warehouse_loader.fact_transaction_item_aggregate`. |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | pre_tax_ticket_sales_amount | decimal(19,4) | Ticket sales amount before tax | 31.50 | Derived |  | [derived] Subtracts `public.fact_sales_fee_tax.pr_ticket_tax_amount` from `public.fact_transaction.ticket_sales_amount`. |
@@ -3592,7 +3596,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | returned_ticket_tax_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `returned_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -3623,7 +3627,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | ticket_tax_return_amount |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
@@ -3654,7 +3658,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction | — | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  | ticket_tax_amount_for_returned_purchase |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | Not specified in provided DataEng files | Source fields not individually mapped | Not specified in provided DataEng files | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. | — | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | decimal(19,4) | Ticket tax amount for returned purchase | 3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
 
