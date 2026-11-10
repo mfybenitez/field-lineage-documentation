@@ -21,6 +21,7 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
 - Temporary tables, including `#` tables, are mentioned in notes and excluded from the permanent flow diagram and lineage table.
 - When a field has a fallback source, its primary source is named first and the fallback is identified in the notes.
 - If a value is passed through unchanged from the preceding stage, its Source cell keeps the preceding stage’s Source label.
+- The collapsible table for each field lists: Redshift Table, Table Grain, Column Name, Data Type, Description, Example Value, Source, GitHub Link, and Logic Explanation. GitHub Link cells are left blank.
 - **Source** describes the origin or classification of the row's data:
   - `Backend` — data from Fandango ticketing/backend systems.
   - `Third-party` — data supplied by an external provider or feed.
@@ -1855,7 +1856,7 @@ flowchart LR
 | raw_import_cache.transaction |  | affiliate_id |  | Raw column(s) used by the dimension load for `Affiliate Grouping`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping" | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] Buckets affiliate IDs into reporting groups with CASE rules. |
+| analytics.transactions_data_source | 1 row / transaction_guid | Affiliate Grouping | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] Buckets affiliate IDs into reporting groups with CASE rules. |
 
 </details>
 
@@ -1883,7 +1884,7 @@ flowchart LR
 | raw_import_cache.transaction |  | affiliate_id |  | Raw column(s) used by the dimension load for `Affiliate Grouping - HIGH LEVEL BINS`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping - HIGH LEVEL BINS" | varchar(256) | High-level bucket | Fandango O&O | Derived |  | [conditional] Groups affiliate IDs into high-level reporting bins. |
+| analytics.transactions_data_source | 1 row / transaction_guid | Affiliate Grouping - HIGH LEVEL BINS | varchar(256) | High-level bucket | Fandango O&O | Derived |  | [conditional] Groups affiliate IDs into high-level reporting bins. |
 
 </details>
 
@@ -2772,16 +2773,16 @@ flowchart LR
 ## 100. `waived_fanclub_fee_ticket_count`
 
 ```mermaid
-flowchart LR
-  n0_0["raw_import_cache.transactionItem"]
-  n1_0["public.fact_transaction_item"]
-  n2_0["warehouse_loader.fact_transaction_item_aggregate"]
-  n3_0["public.fact_transaction"]
-  n4_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n1_0 --> n2_0
-  n2_0 --> n3_0
-  n3_0 --> n4_0
+flowchart TB
+  rawItem["raw_import_cache.transactionItem"]
+  publicItem["public.fact_transaction_item"]
+  itemAggregate["warehouse_loader.fact_transaction_item_aggregate"]
+  publicTransaction["public.fact_transaction"]
+  analyticsTable["analytics.transactions_data_source"]
+  rawItem --> publicItem
+  publicItem --> itemAggregate
+  itemAggregate --> publicTransaction
+  publicTransaction --> analyticsTable
 ```
 
 <details>
