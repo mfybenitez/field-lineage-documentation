@@ -306,15 +306,17 @@ flowchart LR
   n0_0["raw_import_cache.transactionCommitted"]
   n0_1["raw_import_cache.transactionRolledBack"]
   n0_2["raw_import_cache.transaction"]
-  n1_0["public.fact_transaction"]
-  n2_0["analytics.transactions_data_source"]
+  n1_0["warehouse_loader.fact_transaction_base"]
+  n2_0["public.fact_transaction"]
+  n3_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n0_2 --> n1_0
   n1_0 --> n2_0
+  n2_0 --> n3_0
 ```
 
-**Notes:** The end timestamp uses the later commit or rollback time, falling back to `raw_import_cache.transaction.Create_dm`. `public.dim_theater` supplies the theater time zone used by `public.fact_transaction` to convert the timestamp to local time.
+**Notes:** The end timestamp uses the later commit or rollback time, falling back to `raw_import_cache.transaction.Create_dm`. `public.dim_theater` supplies the theater time zone used when `public.fact_transaction` converts the timestamp to local time.
 
 <details>
 <summary>Lineage table for transaction_end_datetime_local</summary>
@@ -324,7 +326,8 @@ flowchart LR
 | raw_import_cache.transactionCommitted | 1 row / transaction_guid | Create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionCommitted`. |
 | raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback time |  | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionRolledBack`. |
 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transaction`. |
-| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | Transaction end time in the theater time zone | 2026-10-01 09:11:05 | Derived |  | [derived] Converts the end timestamp using the theater time-zone value described in Notes. |
+| warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.Create_dm`. |
+| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | Transaction end time in the theater time zone | 2026-10-01 09:11:05 | Derived |  | [derived] Converts the end timestamp using `public.dim_theater.theater_time_zone_name`. |
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local | 2026-10-01 09:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime_local` from `public.fact_transaction`. |
 
 </details>
@@ -1551,11 +1554,9 @@ flowchart LR
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.postalCodeTimeZone"]
-  n0_1["raw_import_cache.theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1567,7 +1568,6 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.postalCodeTimeZone |  | time_zone_name |  | Raw column(s) used by the dimension load for `theater_time_zone_name`. |  | Backend/Third-party |  |  |
-| raw_import_cache.theater |  |  |  | Mapping-only input; the field value is supplied by the value column identified in Notes. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
 | analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
@@ -1578,26 +1578,22 @@ flowchart LR
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.designatedMarketArea"]
-  n0_1["raw_import_cache.theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
-**Notes:** public.dim_theater joined to public.fact_transaction; designatedMarketArea joins on zip_code. Value column: `raw_import_cache.designatedMarketArea.market_name`.
+**Notes:** The value comes from `raw_import_cache.designatedMarketArea.market_name`. Analytics joins that raw value to the transaction using the theater ZIP from `public.dim_theater`; the dimension table is a side lookup and is not a field-value source.
 
 <details>
 <summary>Lineage table for dma_market_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| raw_import_cache.designatedMarketArea | 1 row / zip_code | zip_code | varchar | ZIP to DMA mapping | 90028 / Los Angeles | Third-party |  | External DMA source used in analytics join. |
-| raw_import_cache.designatedMarketArea | 1 row / zip_code | market_name | varchar | ZIP to DMA mapping | 90028 / Los Angeles | Third-party |  | External DMA source used in analytics join. |
-| raw_import_cache.theater | dimension source grain | names | mixed | Raw sources for public dimensions used in projection |  | Backend/Third-party |  |  |
-| public.fact_transaction | 1 row / transaction_guid | charity_name | varchar(256) | Charity name associated with the transaction | Save The Arts | Backend |  | [passthrough] Copies `charity_name` from `warehouse_loader.fact_transaction_base`. |
-| analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] Reads the field value from `raw_import_cache.designatedMarketArea.market_name`; see Notes for dimension-side lineage. |
+| raw_import_cache.designatedMarketArea | 1 row / zip_code | market_name | varchar | DMA market name | Los Angeles | Third-party |  | Field value selected directly by analytics. |
+| public.fact_transaction | 1 row / transaction_guid | — | — | Transaction row used to associate the DMA value with a transaction; no direct DMA value column. | — | ETL |  | [lookup] Analytics joins the DMA market value to the transaction using the theater ZIP from `public.dim_theater`. |
+| analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] Reads `market_name` from `raw_import_cache.designatedMarketArea`. |
 
 </details>
 
@@ -2116,7 +2112,7 @@ flowchart LR
 | raw_import_cache.refund | 1 row / refund line | Fee_at | numeric | Return-side financial values |  | Backend |  |  |
 | raw_import_cache.refund | 1 row / refund line | ReservedFee_at | numeric | Return-side financial values |  | Backend |  |  |
 | raw_import_cache.refund | 1 row / refund line | CardFee_at | numeric | Return-side financial values |  | Backend |  |  |
-| public.fact_return | refund/purchase GUID, return datetime, and reason group | return_fee_amount | mixed | Return facts consumed by return aggregation and refund updates | — | ETL |  |  |
+| public.fact_return | refund/purchase GUID, return datetime, and reason group | taxable_sales_fee_amount | numeric(19,4) | Returned taxable sales-fee amount | — | ETL |  |  |
 | warehouse_loader.fact_return_aggregate | 1 row / purchase_transaction_guid | returned_fee_amount | numeric | Purchase-side returned rollups | — | Derived |  | [aggregate] Sums successful `public.fact_return` amounts by purchase transaction. |
 | public.fact_transaction | 1 row / purchase transaction_guid | returned_fee_amount | numeric(19,4) | Returned values at purchase row | -42.50 | Derived |  | [lookup] Copies purchase return totals from `warehouse_loader.fact_return_aggregate`. |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | -5.00 | Derived |  | [passthrough] Copies `returned_fee_amount` from `public.fact_transaction`. |
@@ -2568,7 +2564,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -2591,7 +2587,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `returned_sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -2614,7 +2610,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
@@ -2637,7 +2633,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
 
@@ -2651,9 +2647,7 @@ flowchart LR
   n0_1["raw_import_cache.transactionCustomer"]
   n0_2["raw_import_cache.testEmailAddress"]
   n0_3["raw_import_cache.testTransactionEmailList"]
-  n0_4["raw_import_cache.refund"]
-  n0_5["raw_import_cache.transactionPerformanceAttribute"]
-  n0_6["raw_import_cache.theater"]
+  n0_4["raw_import_cache.theater"]
   n1_0["warehouse_loader.fact_transaction_base"]
   n2_0["public.fact_transaction"]
   n3_0["analytics.transactions_data_source"]
@@ -2662,13 +2656,11 @@ flowchart LR
   n0_2 --> n1_0
   n0_3 --> n1_0
   n0_4 --> n1_0
-  n0_5 --> n1_0
-  n0_6 --> n1_0
   n1_0 --> n2_0
   n2_0 --> n3_0
 ```
 
-**Notes:** public.dim_theater is used during the warehouse_loader.fact_transaction_base build; its pdi_id contributes to the is_test condition. Test status uses the transaction test flag and theater PDI ID; refund linkage is contextual only. Test status uses the transaction test flag and theater PDI ID; refund linkage is contextual only.
+**Notes:** `public.dim_theater` supplies the theater `pdi_id` checked by the stage logic. The field is also classified using transaction and customer test indicators and the test-email lists.
 
 <details>
 <summary>Lineage table for is_test</summary>
@@ -2683,9 +2675,7 @@ flowchart LR
 | raw_import_cache.testTransactionEmailList | 1 row / TestTransactionEmailList_id | email_tx | varchar(100) | Test email address or pattern | loadtester_%@fandango.com | Backend |  | [passthrough] Reads `email_tx` from `raw_import_cache.testTransactionEmailList`. |
 | raw_import_cache.testTransactionEmailList | 1 row / TestTransactionEmailList_id | active_bt | boolean | Whether the test-email rule is enabled | true | Backend |  | [passthrough] Reads `active_bt` from `raw_import_cache.testTransactionEmailList`. |
 | raw_import_cache.testTransactionEmailList | 1 row / TestTransactionEmailList_id | pattern_bt | boolean | Whether the email rule is a pattern | true | Backend |  | [passthrough] Reads `pattern_bt` from `raw_import_cache.testTransactionEmailList`. |
-| raw_import_cache.refund |  |  |  | Mapping-only input; the field value is supplied by the value column identified in Notes. |  | Backend |  |  |
-| raw_import_cache.transactionPerformanceAttribute | 1 row / tx/perf | theater_pkey | int | Movie/theater ids | 10293/4451 | Backend |  | Inputs to movie/theater keys. |
-| raw_import_cache.theater |  | is_test |  | The workbook includes this table in the field path, but field-specific metadata is unavailable for this step. |  | Backend/Third-party |  |  |
+| raw_import_cache.theater |  | PDI_id |  | Theater PDI ID used by the dimension lookup and test classification. |  | Backend/Third-party |  |  |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | is_test | boolean | Test transaction flag | false | Derived |  | [conditional] Flags committed, allowed, and theater/type test transactions. |
 | public.fact_transaction | 1 row / transaction_guid | is_test | boolean | Whether the transaction is classified as a test | false | Derived |  | [passthrough] Copies `is_test` from `warehouse_loader.fact_transaction_base`. |
 | analytics.transactions_data_source | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] Copies `is_test` from `public.fact_transaction`. |
@@ -3436,7 +3426,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived |  | [passthrough] Copies `pr_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -3467,7 +3457,7 @@ flowchart LR
 | raw_import_cache.transactionItem | 1 row / transaction_guid + item_guid | Item_at | numeric | Item amount | 35.00 | Backend |  | [passthrough] Reads `Item_at` from `raw_import_cache.transactionItem`. |
 | public.fact_transaction_item | 1 row / transaction_guid + item_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales-fee amount | 0.00 | Backend |  | [passthrough] Copies `taxable_at` from `raw_import_cache.transactionItem`. |
 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales amount | 70.00 | Backend |  | [aggregate] Sums `item_count × item_amount` from `public.fact_transaction_item`. |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 70.00 | Backend |  | [passthrough] Copies `item_sales_amount` from `warehouse_loader.fact_transaction_item_aggregate`. |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | pre_tax_ticket_sales_amount | decimal(19,4) | Ticket sales amount before tax | 31.50 | Derived |  | [derived] Subtracts `public.fact_sales_fee_tax.pr_ticket_tax_amount` from `public.fact_transaction.ticket_sales_amount`. |
@@ -3491,7 +3481,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `returned_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
@@ -3514,7 +3504,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
@@ -3537,7 +3527,7 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
+| raw_import_cache.stgsalestaxtransaction_unmatched | line-item staging grain | total_lineitem_tax | numeric | Raw sales-tax value for unmatched rows later matched to concession transactions |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | decimal(19,4) | Ticket tax amount for returned purchase | 3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
 
