@@ -21,6 +21,8 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
 - Temporary tables, including `#` tables, are mentioned in notes and excluded from the permanent flow diagram and lineage table.
 - When a field has a fallback source, its primary source is named first and the fallback is identified in the notes.
 - If a value is passed through unchanged from the preceding stage, its Source cell keeps the preceding stage’s Source label.
+- **Example Value** entries are illustrative formats, not sampled production values; `—` means no example is available in the supplied files.
+- Dimension join keys are not listed as field-source columns. Dimension value columns are named in Notes.
 - **Source** describes the origin or classification of the row's data:
   - `Backend` — data from Fandango ticketing/backend systems.
   - `Third-party` — data supplied by an external provider or feed.
@@ -54,7 +56,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction id | 9F2A... | Backend |  | [passthrough] Copies `transaction_guid` from `public.fact_transaction`. |
 
 </details>
-
 ## 002. `is_successful`
 
 ```mermaid
@@ -82,7 +83,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | [passthrough] Copies `is_successful` from `public.fact_transaction`. |
 
 </details>
-
 ## 003. `transaction_start_datetime_utc`
 
 ```mermaid
@@ -107,7 +107,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_utc | timestamp | Start UTC | 2026-10-01 16:10:00 | Backend |  | [passthrough] Copies `transaction_start_datetime_utc` from `public.fact_transaction`. |
 
 </details>
-
 ## 004. `transaction_start_datetime_los_angeles`
 
 ```mermaid
@@ -132,7 +131,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived |  | [rename/cast] Converts `transaction_start_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
-
 ## 005. `transaction_commit_datetime_utc`
 
 ```mermaid
@@ -157,7 +155,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_utc | timestamp | Commit UTC | 2026-10-01 16:11:05 | Backend |  | [passthrough] Copies `transaction_commit_datetime_utc` from `public.fact_transaction`. |
 
 </details>
-
 ## 006. `transaction_commit_datetime_los_angeles`
 
 ```mermaid
@@ -182,7 +179,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived |  | [rename/cast] Converts `transaction_commit_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
-
 ## 007. `transaction_rollback_datetime_utc`
 
 ```mermaid
@@ -207,7 +203,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_utc | timestamp | Rollback UTC | NULL | Backend |  | [passthrough] Copies `transaction_rollback_datetime_utc` from `public.fact_transaction`. |
 
 </details>
-
 ## 008. `transaction_rollback_datetime_los_angeles`
 
 ```mermaid
@@ -232,7 +227,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived |  | [rename/cast] Converts `transaction_rollback_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
-
 ## 009. `transaction_end_datetime_utc`
 
 ```mermaid
@@ -261,11 +255,10 @@ flowchart LR
 | raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback time |  | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionRolledBack`. |
 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transaction`. |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.Create_dm`. |
-| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime` from `warehouse_loader.fact_transaction_base`. |
+| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Carries the transaction end timestamp. |
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_utc | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime_utc` from `public.fact_transaction`. |
 
 </details>
-
 ## 010. `transaction_end_datetime_los_angeles`
 
 ```mermaid
@@ -294,11 +287,10 @@ flowchart LR
 | raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback time |  | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionRolledBack`. |
 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transaction`. |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.Create_dm`. |
-| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime` from `warehouse_loader.fact_transaction_base`. |
+| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Carries the transaction end timestamp. |
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived |  | [rename/cast] Converts `transaction_end_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
-
 ## 011. `transaction_end_datetime_local`
 
 ```mermaid
@@ -306,23 +298,15 @@ flowchart LR
   n0_0["raw_import_cache.transactionCommitted"]
   n0_1["raw_import_cache.transactionRolledBack"]
   n0_2["raw_import_cache.transaction"]
-  n0_3["raw_import_cache.transactionPerformanceAttribute"]
-  n0_4["raw_import_cache.theater"]
-  n0_5["raw_import_cache.postalCodeTimeZone"]
-  n1_0["warehouse_loader.fact_transaction_base"]
-  n2_0["public.fact_transaction"]
-  n3_0["analytics.transactions_data_source"]
+  n1_0["public.fact_transaction"]
+  n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n0_2 --> n1_0
-  n0_3 --> n1_0
-  n0_4 --> n1_0
-  n0_5 --> n1_0
   n1_0 --> n2_0
-  n2_0 --> n3_0
 ```
 
-**Notes:** warehouse_loader.fact_transaction_base uses the later commit or rollback timestamp; it falls back to transaction.create_dm if neither exists. The theater time zone converts the result to local time.  
+**Notes:** The end timestamp uses the later commit or rollback time, falling back to `raw_import_cache.transaction.Create_dm`. `public.dim_theater` supplies the theater time zone used by `public.fact_transaction` to convert the timestamp to local time.
 
 <details>
 <summary>Lineage table for transaction_end_datetime_local</summary>
@@ -332,12 +316,7 @@ flowchart LR
 | raw_import_cache.transactionCommitted | 1 row / transaction_guid | Create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionCommitted`. |
 | raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback time |  | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionRolledBack`. |
 | raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transaction`. |
-| raw_import_cache.transactionPerformanceAttribute | 1 row / tx/perf | theater_pkey | int | Movie/theater ids | 10293/4451 | Backend |  | Inputs to movie/theater keys. |
-| raw_import_cache.theater | dimension source grain | vendor | mixed | Raw sources for public dimensions used in projection |  | Backend/Third-party |  |  |
-| raw_import_cache.postalCodeTimeZone | dimension source grain | vendor | mixed | Raw sources for public dimensions used in projection |  | Backend/Third-party |  |  |
-| warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.Create_dm`. |
-| warehouse_loader.fact_transaction_base | 1 row / transaction_guid | theater_key | bigint | Conformed surrogate keys | 8123 | ETL |  | [lookup] Resolves `theater_key` through `public.dim_theater`. |
-| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | Transaction end time in the theater time zone | 2026-10-01 09:11:05 | Derived |  | [derived] Converts `transaction_end_datetime` using `public.dim_theater.theater_time_zone_name`. |
+| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | Transaction end time in the theater time zone | 2026-10-01 09:11:05 | Derived |  | [derived] Converts the end timestamp using the theater time-zone value described in Notes. |
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End local | 2026-10-01 09:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime_local` from `public.fact_transaction`. |
 
 </details>
@@ -348,26 +327,14 @@ flowchart LR
 flowchart LR
   n0_0["raw_import_cache.movieDetail"]
   n0_1["raw_import_cache.movieDetailDeleted"]
-  n1_0["raw_import_cache.transaction"]
-  n1_1["raw_import_cache.transactionCommitted"]
-  n1_2["raw_import_cache.transactionRolledBack"]
-  n2_0["warehouse_loader.fact_transaction_base"]
-  n3_0["public.fact_transaction"]
-  n4_0["analytics.transactions_data_source"]
+  n1_0["public.fact_transaction"]
+  n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_0 --> n1_1
-  n0_0 --> n1_2
   n0_1 --> n1_0
-  n0_1 --> n1_1
-  n0_1 --> n1_2
   n1_0 --> n2_0
-  n1_1 --> n2_0
-  n1_2 --> n2_0
-  n2_0 --> n3_0
-  n3_0 --> n4_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction. Release date is primary from movieDetail; movieDetailDeleted supplies it when active details are absent. Value columns: public.dim_movie.movie_release_date; public.fact_transaction.transaction_end_datetime. Raw value columns include `movieDetail.date_released` (deleted details are fallback) and transaction end-time events.
+**Notes:** `public.dim_movie` joins to `public.fact_transaction`. The release date comes primarily from `raw_import_cache.movieDetail.date_released`, with `raw_import_cache.movieDetailDeleted.date_released` as fallback. Analytics compares that dimension value with `public.fact_transaction.transaction_end_datetime`.
 
 <details>
 <summary>Lineage table for deltareleasetopurchasedate</summary>
@@ -376,13 +343,8 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.movieDetail |  | date_released |  | Raw column(s) used by the dimension load for `deltareleasetopurchasedate`. |  | Backend/Third-party |  |  |
 | raw_import_cache.movieDetailDeleted |  | date_released |  | Raw column(s) used by the dimension load for `deltareleasetopurchasedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction |  | Create_dm |  | Raw column(s) used by the dimension load for `deltareleasetopurchasedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transaction | 1 row / transaction_guid | Create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transaction`. |
-| raw_import_cache.transactionCommitted | 1 row / transaction_guid | Create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionCommitted`. |
-| raw_import_cache.transactionRolledBack | 1 row / transaction_guid | Create_dm | timestamp | Rollback time |  | Backend |  | [passthrough] Reads `Create_dm` from `raw_import_cache.transactionRolledBack`. |
-| warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.Create_dm`. |
-| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime` from `warehouse_loader.fact_transaction_base`. |
-| analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetopurchasedate | int | Days release->purchase day | 17 | Derived |  | [derived] Calculates days from `public.dim_movie.movie_release_date` to transaction end. |
+| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Carries the transaction end timestamp. |
+| analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetopurchasedate | int | Days release->purchase day | 17 | Derived |  | [derived] Uses the dimension value described in Notes. |
 
 </details>
 
@@ -392,18 +354,14 @@ flowchart LR
 flowchart LR
   n0_0["raw_import_cache.movieDetail"]
   n0_1["raw_import_cache.movieDetailDeleted"]
-  n1_0["raw_import_cache.transactionPerformanceAttribute"]
-  n2_0["warehouse_loader.fact_transaction_base"]
-  n3_0["public.fact_transaction"]
-  n4_0["analytics.transactions_data_source"]
+  n1_0["public.fact_transaction"]
+  n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n1_0 --> n2_0
-  n2_0 --> n3_0
-  n3_0 --> n4_0
 ```
 
-**Notes:** public.dim_movie joins public.fact_transaction. Release date is primary from movieDetail; movieDetailDeleted supplies it when active details are absent. Value columns: public.dim_movie.movie_release_date and public.fact_transaction.performance_datetime_local. Raw release-date values come from `movieDetail.date_released` with deleted details as fallback.
+**Notes:** `public.dim_movie` joins to `public.fact_transaction`. The release date comes primarily from `raw_import_cache.movieDetail.date_released`, with `raw_import_cache.movieDetailDeleted.date_released` as fallback. Analytics compares that dimension value with `public.fact_transaction.performance_datetime_local`.
 
 <details>
 <summary>Lineage table for deltareleasetoshowtimedate</summary>
@@ -412,9 +370,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.movieDetail |  | date_released |  | Raw column(s) used by the dimension load for `deltareleasetoshowtimedate`. |  | Backend/Third-party |  |  |
 | raw_import_cache.movieDetailDeleted |  | date_released |  | Raw column(s) used by the dimension load for `deltareleasetoshowtimedate`. |  | Backend/Third-party |  |  |
-| raw_import_cache.transactionPerformanceAttribute | 1 row / transaction and performance | Performance_dm | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Reads `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
-| warehouse_loader.fact_transaction_base | 1 row / transaction_guid | performance_datetime_local | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
-| public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `warehouse_loader.fact_transaction_base`. |
+| public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Carries the performance time. |
 | analytics.transactions_data_source | 1 row / transaction_guid | deltareleasetoshowtimedate | int | Days release->showtime day | 21 | Derived |  | [derived] Calculates days from movie release to `performance_datetime_local`. |
 
 </details>
@@ -451,12 +407,11 @@ flowchart LR
 | raw_import_cache.transactionPerformanceAttribute | 1 row / transaction and performance | Performance_dm | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Reads `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.Create_dm`. |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | performance_datetime_local | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
-| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime` from `warehouse_loader.fact_transaction_base`. |
-| public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `warehouse_loader.fact_transaction_base`. |
+| public.fact_transaction | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Carries the transaction end timestamp. |
+| public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Carries the performance time. |
 | analytics.transactions_data_source | 1 row / transaction_guid | deltapurchasetoshowtimedate | int | Days purchase day->showtime day | 4 | Derived |  | [derived] Calculates days from transaction end to `performance_datetime_local`. |
 
 </details>
-
 ## 015. `point_of_sale_confirmation_code`
 
 ```mermaid
@@ -481,7 +436,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation code | CNF908812 | Backend |  | [passthrough] Copies `point_of_sale_confirmation_code` from `public.fact_transaction`. |
 
 </details>
-
 ## 016. `is_reserved_seating`
 
 ```mermaid
@@ -506,7 +460,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived |  | [passthrough] Copies `is_reserved_seating` from `public.fact_transaction`. |
 
 </details>
-
 ## 017. `reserved_seats`
 
 ```mermaid
@@ -531,7 +484,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | reserved_seats | varchar(100) | Reserved seats | A10,A11 | Backend |  | [passthrough] Copies `reserved_seats` from `public.fact_transaction`. |
 
 </details>
-
 ## 018. `loyalty_code`
 
 ```mermaid
@@ -556,7 +508,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | loyalty_code | varchar(40) | Loyalty code | LOY123 | Backend |  | [passthrough] Copies `loyalty_code` from `public.fact_transaction`. |
 
 </details>
-
 ## 019. `performance_datetime_local`
 
 ```mermaid
@@ -577,11 +528,10 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transactionPerformanceAttribute | 1 row / transaction and performance | Performance_dm | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Reads `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
 | warehouse_loader.fact_transaction_base | 1 row / transaction_guid | performance_datetime_local | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `Performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
-| public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `warehouse_loader.fact_transaction_base`. |
+| public.fact_transaction | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Carries the performance time. |
 | analytics.transactions_data_source | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance local | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `public.fact_transaction`. |
 
 </details>
-
 ## 020. `payment_types`
 
 ```mermaid
@@ -606,13 +556,12 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transactionPayment | 1 row / payment_guid | Payment_tp | varchar(40) | Payment type code | VISA | Backend |  | [passthrough] Reads `Payment_tp` from `raw_import_cache.transactionPayment`. |
 | raw_import_cache.transactionPayment | 1 row / payment_guid | Account_cd | varchar(600) | Payment account or instrument code |  | Backend |  | [passthrough] Reads `Account_cd` from `raw_import_cache.transactionPayment`. |
-| public.fact_payment | 1 row / payment_guid | payment_instrument_key | integer | Payment instrument key | — | Backend |  | [lookup] Resolves the payment instrument using `public.dim_payment_instrument`. |
+| public.fact_payment | 1 row / payment_guid | payment_instrument_key | integer | Payment instrument key | — | Backend |  | [lookup] Uses the payment-instrument mapping described in Notes. |
 | warehouse_loader.fact_payment_aggregate | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | VISA | Backend |  | [aggregate/lookup] Groups `public.fact_payment` by transaction and resolves labels with payment dimensions. |
 | public.fact_transaction | 1 row / transaction_guid | payment_types | varchar(200) | Payment-type labels | VISA | Backend |  | [passthrough] Copies `payment_types` from `warehouse_loader.fact_payment_aggregate`. |
 | analytics.transactions_data_source | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | VISA | Backend |  | [passthrough] Copies `payment_types` from `public.fact_transaction`. |
 
 </details>
-
 ## 021. `processor_order_ids`
 
 ```mermaid
@@ -651,7 +600,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | ord_123 | Third-party |  | [passthrough] Copies `processor_order_ids` from `public.fact_transaction`. |
 
 </details>
-
 ## 022. `affiliate_name`
 
 ```mermaid
@@ -672,10 +620,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.affiliate |  | affiliate_nm |  | Raw column(s) used by the dimension load for `affiliate_name`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 023. `affiliate_group_name`
 
 ```mermaid
@@ -702,10 +649,9 @@ flowchart LR
 | raw_import_cache.affiliateGroupMapping |  |  |  | Mapping-only input; the field value is supplied by the value column identified in Notes. |  | Backend/Third-party |  |  |
 | raw_import_cache.affiliateGroup |  | name |  | Raw column(s) used by the dimension load for `affiliate_group_name`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_group_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 024. `affiliate_category_name`
 
 ```mermaid
@@ -729,10 +675,9 @@ flowchart LR
 | raw_import_cache.affiliate |  |  |  | Mapping-only input; the field value is supplied by the value column identified in Notes. |  | Backend/Third-party |  |  |
 | raw_import_cache.affiliateCategory |  | Category_nm |  | Raw column(s) used by the dimension load for `affiliate_category_name`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_category_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 025. `affiliate_id`
 
 ```mermaid
@@ -756,10 +701,9 @@ flowchart LR
 | raw_import_cache.affiliate |  | affiliate_id |  | Raw column(s) used by the dimension load for `affiliate_id`. |  | Backend/Third-party |  |  |
 | raw_import_cache.transaction |  | affiliate_id |  | Raw column(s) used by the dimension load for `affiliate_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] Reads the field value from `public.dim_affiliate.affiliate_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 026. `channel`
 
 ```mermaid
@@ -780,10 +724,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transaction |  | channel_cd |  | Raw column(s) used by the dimension load for `channel`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend |  | [lookup] Reads the field value from `public.dim_channel.channel_group`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 027. `channel_ungrouped`
 
 ```mermaid
@@ -804,22 +747,23 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transaction |  | channel_cd |  | Raw column(s) used by the dimension load for `channel_ungrouped`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | [lookup] Reads the field value from `public.dim_channel.channel_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 028. `filmid_child`
 
 ```mermaid
-flowchart LR
+flowchart TB
   n0_0["raw_import_cache.movieDetail"]
   n0_1["raw_import_cache.movieDetailDeleted"]
-  n0_2["raw_import_cache.showtime and raw_import_cache.showtimeTMS"]
+  n0_2["raw_import_cache.showtime"]
+  n0_3["raw_import_cache.showtimeTMS"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n0_2 --> n1_0
+  n0_3 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -835,22 +779,23 @@ flowchart LR
 | raw_import_cache.showtime |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Backend |  |  |
 | raw_import_cache.showtimeTMS |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 029. `filmname_child`
 
 ```mermaid
-flowchart LR
+flowchart TB
   n0_0["raw_import_cache.movieDetail"]
   n0_1["raw_import_cache.movieDetailDeleted"]
-  n0_2["raw_import_cache.showtime and raw_import_cache.showtimeTMS"]
+  n0_2["raw_import_cache.showtime"]
+  n0_3["raw_import_cache.showtimeTMS"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n0_2 --> n1_0
+  n0_3 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -866,22 +811,25 @@ flowchart LR
 | raw_import_cache.showtime |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Backend |  |  |
 | raw_import_cache.showtimeTMS |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_title`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 030. `filmid_parent`
 
 ```mermaid
-flowchart LR
+flowchart TB
   n0_0["raw_import_cache.movieParentOverride"]
   n0_1["raw_import_cache.movieDetail"]
-  n0_2["raw_import_cache.movieDetailDeleted, raw_import_cache.showtime, and raw_import_cache.showtimeTMS"]
+  n0_2["raw_import_cache.movieDetailDeleted"]
+  n0_3["raw_import_cache.showtime"]
+  n0_4["raw_import_cache.showtimeTMS"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n0_2 --> n1_0
+  n0_3 --> n1_0
+  n0_4 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -898,22 +846,25 @@ flowchart LR
 | raw_import_cache.showtime |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Backend |  |  |
 | raw_import_cache.showtimeTMS |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_parent_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 031. `filmname_parent`
 
 ```mermaid
-flowchart LR
+flowchart TB
   n0_0["raw_import_cache.movieDetail"]
   n0_1["raw_import_cache.movieParentOverride"]
-  n0_2["raw_import_cache.movieDetailDeleted, raw_import_cache.showtime, and raw_import_cache.showtimeTMS"]
+  n0_2["raw_import_cache.movieDetailDeleted"]
+  n0_3["raw_import_cache.showtime"]
+  n0_4["raw_import_cache.showtimeTMS"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
   n0_2 --> n1_0
+  n0_3 --> n1_0
+  n0_4 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -930,10 +881,9 @@ flowchart LR
 | raw_import_cache.showtime |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Backend |  |  |
 | raw_import_cache.showtimeTMS |  | movie_detail_id |  | Movie ID used by the movie dimension; showtime inputs can create a placeholder movie row when no movie detail exists. |  | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_parent_title`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 032. `releasedate`
 
 ```mermaid
@@ -957,10 +907,9 @@ flowchart LR
 | raw_import_cache.movieDetail |  | date_released |  | Raw column(s) used by the dimension load for `releasedate`. |  | Backend/Third-party |  |  |
 | raw_import_cache.movieDetailDeleted |  | date_released |  | Raw column(s) used by the dimension load for `releasedate`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend |  | [lookup] Reads the field value from `public.dim_movie.movie_release_date`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 033. `movie_tms_id`
 
 ```mermaid
@@ -984,10 +933,9 @@ flowchart LR
 | raw_import_cache.movieDetail |  | tms_movie_id |  | Raw column(s) used by the dimension load for `movie_tms_id`. |  | Backend/Third-party |  |  |
 | raw_import_cache.movieDetailDeleted |  | tms_movie_id |  | Raw column(s) used by the dimension load for `movie_tms_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party |  | [lookup] Reads the field value from `public.dim_movie.movie_tms_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 034. `chainname`
 
 ```mermaid
@@ -1011,10 +959,9 @@ flowchart LR
 | raw_import_cache.chain |  | chain_name |  | Raw column(s) used by the dimension load for `chainname`. |  | Backend |  |  |
 | raw_import_cache.theater |  | Chain_id |  | Raw column(s) used by the dimension load for `chainname`. |  | Backend |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend |  | [lookup] Reads the field value from `public.dim_chain.chain_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 035. `chainid`
 
 ```mermaid
@@ -1038,10 +985,9 @@ flowchart LR
 | raw_import_cache.chain |  | chainid |  | Raw column(s) used by the dimension load for `chainid`. |  | Backend |  |  |
 | raw_import_cache.theater |  | Chain_id |  | Raw column(s) used by the dimension load for `chainid`. |  | Backend |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend |  | [lookup] Reads the field value from `public.dim_chain.chain_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 036. `pos_vendor`
 
 ```mermaid
@@ -1062,10 +1008,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.chain |  | pos_vendor |  | Raw column(s) used by the dimension load for `pos_vendor`. |  | Backend |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party |  | [lookup] Reads the field value from `public.dim_chain.point_of_sale_vendor`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 037. `awards_program_name`
 
 ```mermaid
@@ -1086,10 +1031,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.chain |  | Program_nm |  | Raw column(s) used by the dimension load for `awards_program_name`. |  | Backend |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend |  | [lookup] Reads the field value from `public.dim_chain.awards_program_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 038. `theater_id`
 
 ```mermaid
@@ -1110,10 +1054,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Theater_pkey |  | Raw column(s) used by the dimension load for `theater_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 039. `theater_code`
 
 ```mermaid
@@ -1134,10 +1077,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Theater_id |  | Raw column(s) used by the dimension load for `theater_code`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_code`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 040. `theater_name`
 
 ```mermaid
@@ -1158,10 +1100,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Theater_nm |  | Raw column(s) used by the dimension load for `theater_name`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 041. `pdi_id`
 
 ```mermaid
@@ -1182,10 +1123,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Pdiid |  | Raw column(s) used by the dimension load for `pdi_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend |  | [lookup] Reads the field value from `public.dim_theater.pdi_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 042. `pos_theater_id`
 
 ```mermaid
@@ -1206,20 +1146,17 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | POS_theater_id |  | Raw column(s) used by the dimension load for `pos_theater_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend |  | [lookup] Reads the field value from `public.dim_theater.point_of_sale_theater_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 043. `latitude`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1231,22 +1168,18 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Lat_rl |  | Raw column(s) used by the dimension load for `latitude`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_id | latitude | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | [lookup] Reads the field value from `public.dim_theater.latitude`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 044. `longitude`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1258,12 +1191,10 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Long_rl |  | Raw column(s) used by the dimension load for `longitude`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_id | longitude | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | [lookup] Reads the field value from `public.dim_theater.longitude`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 045. `point_of_sale_id`
 
 ```mermaid
@@ -1284,20 +1215,17 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | POS_id |  | Raw column(s) used by the dimension load for `point_of_sale_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend |  | [lookup] Reads the field value from `public.dim_theater.point_of_sale_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 046. `address_1`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1309,22 +1237,18 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Address1_nm |  | Raw column(s) used by the dimension load for `address_1`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_id | address_1 | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | [lookup] Reads the field value from `public.dim_theater.address_1`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 047. `address_2`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1336,22 +1260,18 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Address2_nm |  | Raw column(s) used by the dimension load for `address_2`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_id | address_2 | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | [lookup] Reads the field value from `public.dim_theater.address_2`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 048. `city_name`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1363,22 +1283,18 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | City_nm |  | Raw column(s) used by the dimension load for `city_name`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_id | city_name | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | [lookup] Reads the field value from `public.dim_theater.city_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 049. `state_code`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1390,22 +1306,18 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | State_cd |  | Raw column(s) used by the dimension load for `state_code`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | [lookup] Reads the field value from `public.dim_theater.state_code`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 050. `zip_code`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1417,22 +1329,18 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Zip_cd |  | Raw column(s) used by the dimension load for `zip_code`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | [lookup] Reads the field value from `public.dim_theater.zip_code`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 051. `country_code`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1444,12 +1352,10 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Country_cd |  | Raw column(s) used by the dimension load for `country_code`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | [lookup] Reads the field value from `public.dim_theater.country_code`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 052. `tht_alternate_theater_phone_name`
 
 ```mermaid
@@ -1470,10 +1376,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | AltTheaterPhone_nm |  | Raw column(s) used by the dimension load for `tht_alternate_theater_phone_name`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend |  | [lookup] Reads the field value from `public.dim_theater.alternate_theater_phone_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 053. `chain_specific_site_id`
 
 ```mermaid
@@ -1494,10 +1399,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | ChainSpecificSite_id |  | Raw column(s) used by the dimension load for `chain_specific_site_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend |  | [lookup] Reads the field value from `public.dim_theater.chain_specific_site_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 054. `paymentech_terminal_id`
 
 ```mermaid
@@ -1518,10 +1422,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | PaymentechTerminal_id |  | Raw column(s) used by the dimension load for `paymentech_terminal_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party |  | [lookup] Reads the field value from `public.dim_theater.paymentech_terminal_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 055. `cybersource_terminal_id`
 
 ```mermaid
@@ -1542,10 +1445,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | CybersourceTerminal_id |  | Raw column(s) used by the dimension load for `cybersource_terminal_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party |  | [lookup] Reads the field value from `public.dim_theater.cybersource_terminal_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 056. `screen_count`
 
 ```mermaid
@@ -1566,10 +1468,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Screens_nb |  | Raw column(s) used by the dimension load for `screen_count`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | [lookup] Reads the field value from `public.dim_theater.screen_count`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 057. `seat_count`
 
 ```mermaid
@@ -1590,22 +1491,19 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Seats_nb |  | Raw column(s) used by the dimension load for `seat_count`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | [lookup] Reads the field value from `public.dim_theater.seat_count`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 058. `theater_time_zone_name`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.postalCodeTimeZone"]
   n0_1["raw_import_cache.theater"]
-  n0_2["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
   n0_1 --> n1_0
-  n0_2 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -1618,12 +1516,10 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.postalCodeTimeZone |  | time_zone_name |  | Raw column(s) used by the dimension load for `theater_time_zone_name`. |  | Backend/Third-party |  |  |
 | raw_import_cache.theater |  |  |  | Mapping-only input; the field value is supplied by the value column identified in Notes. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_key | zip_code | varchar(10) | Theater ZIP code | 90028 | Backend |  | `[lookup]` Reads ZIP from public.dim_theater; analytics joins it to raw_import_cache.designatedMarketArea by ZIP. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | [lookup] Reads the field value from `public.dim_theater.theater_time_zone_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 059. `dma_market_name`
 
 ```mermaid
@@ -1651,7 +1547,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] Reads the field value from `raw_import_cache.designatedMarketArea.market_name`; see Notes for dimension-side lineage. |
 
 </details>
-
 ## 060. `transaction_type_id`
 
 ```mermaid
@@ -1678,10 +1573,9 @@ flowchart LR
 | raw_import_cache.transactionItem |  | transaction_tp |  | Raw column(s) used by the dimension load for `transaction_type_id`. |  | Backend/Third-party |  |  |
 | raw_import_cache.transaction |  | transaction_tp |  | Raw column(s) used by the dimension load for `transaction_type_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend |  | [lookup] Reads the field value from `public.dim_transaction_type.transaction_type_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 061. `transaction_type_name`
 
 ```mermaid
@@ -1708,10 +1602,9 @@ flowchart LR
 | raw_import_cache.transactionItem |  | transaction_tp |  | Raw column(s) used by the dimension load for `transaction_type_name`. |  | Backend/Third-party |  |  |
 | raw_import_cache.transaction |  | transaction_tp |  | Raw column(s) used by the dimension load for `transaction_type_name`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend |  | [lookup] Reads the field value from `public.dim_transaction_type.transaction_type_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 062. `user_agent_id`
 
 ```mermaid
@@ -1732,10 +1625,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transaction |  | useragent_nm |  | Raw column(s) used by the dimension load for `user_agent_id`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend |  | [lookup] Reads the field value from `public.dim_user_agent.user_agent_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 063. `user_agent_description`
 
 ```mermaid
@@ -1756,10 +1648,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.transaction |  | useragent_nm |  | Raw column(s) used by the dimension load for `user_agent_description`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend |  | [lookup] Reads the field value from `public.dim_user_agent.user_agent_description`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 064. `purchase_funnel_id`
 
 ```mermaid
@@ -1781,10 +1672,9 @@ flowchart LR
 | raw_import_cache.transactionPurchaseFunnel |  | Funnel_cd |  | Raw column(s) used by the dimension load for `purchase_funnel_id`. |  | Backend/Third-party |  |  |
 | raw_import_cache.transactionPurchaseFunnel | 1 row / tx | Funnel_cd | varchar | Funnel code | 14 | Backend |  | Input to purchase_funnel_key. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend |  | [lookup] Reads the field value from `public.dim_purchase_funnel.purchase_funnel_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 065. `purchase_funnel_name`
 
 ```mermaid
@@ -1806,10 +1696,9 @@ flowchart LR
 | raw_import_cache.transactionPurchaseFunnel |  | Funnel_cd |  | Raw column(s) used by the dimension load for `purchase_funnel_name`. |  | Backend/Third-party |  |  |
 | raw_import_cache.transactionPurchaseFunnel | 1 row / tx | Funnel_cd | varchar | Funnel code | 14 | Backend |  | Input to purchase_funnel_key. |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend |  | [lookup] Reads the field value from `public.dim_purchase_funnel.purchase_funnel_name`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 066. `return_method`
 
 ```mermaid
@@ -1830,10 +1719,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.returnType |  | returnMethod |  | Raw column(s) used by the dimension load for `return_method`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | [lookup] Reads the field value from `public.dim_return_type.return_method`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 067. `return_type_code`
 
 ```mermaid
@@ -1854,10 +1742,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.returnType |  | returnTypeCode |  | Raw column(s) used by the dimension load for `return_type_code`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | [lookup] Reads the field value from `public.dim_return_type.return_type_code`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 068. `return_type_description`
 
 ```mermaid
@@ -1878,10 +1765,9 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.returnType |  | returnTypeDescription |  | Raw column(s) used by the dimension load for `return_type_description`. |  | Backend/Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | [lookup] Reads the field value from `public.dim_return_type.return_type_description`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 069. `Affiliate Grouping`
 
 ```mermaid
@@ -1909,7 +1795,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping" | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] Buckets affiliate IDs into reporting groups with CASE rules. |
 
 </details>
-
 ## 070. `Affiliate Grouping - HIGH LEVEL BINS`
 
 ```mermaid
@@ -1937,7 +1822,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping - HIGH LEVEL BINS" | varchar(256) | High-level bucket | Fandango O&O | Derived |  | [conditional] Groups affiliate IDs into high-level reporting bins. |
 
 </details>
-
 ## 071. `apps`
 
 ```mermaid
@@ -1965,7 +1849,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  | [conditional] Classifies app types from affiliate IDs. |
 
 </details>
-
 ## 072. `platform`
 
 ```mermaid
@@ -1993,7 +1876,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  | [conditional] Classifies platform from channel and affiliate IDs. |
 
 </details>
-
 ## 073. `item_qty`
 
 ```mermaid
@@ -2022,7 +1904,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | item_qty | int | Item qty | 2 | Backend |  | [passthrough] Copies `item_count` from `public.fact_transaction`. |
 
 </details>
-
 ## 074. `gross_transaction_amount`
 
 ```mermaid
@@ -2052,7 +1933,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 42.50 | Derived |  | [passthrough] Copies `gross_transaction_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 075. `sales_fee_amount`
 
 ```mermaid
@@ -2085,7 +1965,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee | 5.00 | Backend |  | [passthrough] Copies `sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 076. `waived_sales_fee_ticket_count`
 
 ```mermaid
@@ -2115,7 +1994,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_ticket_count | numeric(19,4) | Waived sales fee ticket count | 0 | Backend |  | [passthrough] Copies `waived_sales_fee_ticket_count` from `public.fact_transaction`. |
 
 </details>
-
 ## 077. `returned_amount`
 
 ```mermaid
@@ -2143,7 +2021,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount | -42.50 | Derived |  | [passthrough] Copies `returned_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 078. `returned_fee_amount`
 
 ```mermaid
@@ -2173,7 +2050,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | -5.00 | Derived |  | [passthrough] Copies `returned_fee_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 079. `ticket_sales_amount`
 
 ```mermaid
@@ -2202,7 +2078,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Backend |  | [passthrough] Copies `ticket_sales_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 080. `waived_sales_fee_amount`
 
 ```mermaid
@@ -2232,7 +2107,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Waived sales fee amount | 0.00 | Backend |  | [passthrough] Copies `waived_sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 081. `surcharge_fee_amount`
 
 ```mermaid
@@ -2262,7 +2136,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Surcharge fee | 1.50 | Backend |  | [passthrough] Copies `surcharge_fee_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 082. `sales_fee_return_amount`
 
 ```mermaid
@@ -2296,7 +2169,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Sales fee return amount | -5.00 | Derived |  | [passthrough] Copies `sales_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 083. `surcharge_fee_return_amount`
 
 ```mermaid
@@ -2330,7 +2202,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Surcharge fee return amount | -1.50 | Derived |  | [passthrough] Copies `surcharge_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 084. `reservation_fee_return_amount`
 
 ```mermaid
@@ -2364,7 +2235,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | reservation_fee_return_amount | numeric(19,4) | Reservation fee return amount | 0.00 | Derived |  | [passthrough] Copies `reservation_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 085. `tax_return_amount`
 
 ```mermaid
@@ -2398,7 +2268,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | tax_return_amount | numeric(19,4) | Tax return amount | -2.10 | Derived |  | [passthrough] Copies `tax_return_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 086. `card_fee_return_amount`
 
 ```mermaid
@@ -2432,7 +2301,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | card_fee_return_amount | numeric(19,4) | Card fee return amount | -0.40 | Derived |  | [passthrough] Copies `card_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 087. `sales_fee_amount_for_returned_purchase`
 
 ```mermaid
@@ -2481,7 +2349,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee amount for returned purchase | 5.00 | Derived |  | [passthrough] Copies `sales_fee_amount_for_returned_purchase` from `public.fact_transaction`. |
 
 </details>
-
 ## 088. `property_id`
 
 ```mermaid
@@ -2505,10 +2372,9 @@ flowchart LR
 | raw_import_cache.transaction |  | Property_nm |  | Raw column(s) used by the dimension load for `property_id`. |  | Backend/Third-party |  |  |
 | raw_import_cache.refund |  |  |  | Mapping-only input; the field value is supplied by the value column identified in Notes. |  | Backend |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] Reads the field value from `public.dim_property.property_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 089. `pos_reference_cd`
 
 ```mermaid
@@ -2533,17 +2399,14 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pos_reference_cd | varchar(40) | POS reference code | POSREF1 | Backend |  | [passthrough] Copies `pos_reference_cd` from `public.fact_transaction`. |
 
 </details>
-
 ## 090. `braintree_merchant_id`
 
 ```mermaid
 flowchart LR
   n0_0["raw_import_cache.theater"]
-  n0_1["public.dim_theater"]
   n1_0["public.fact_transaction"]
   n2_0["analytics.transactions_data_source"]
   n0_0 --> n1_0
-  n0_1 --> n1_0
   n1_0 --> n2_0
 ```
 
@@ -2555,12 +2418,10 @@ flowchart LR
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | raw_import_cache.theater |  | Braintree_Merchant_id |  | Raw column(s) used by the dimension load for `braintree_merchant_id`. |  | Backend/Third-party |  |  |
-| public.dim_theater | 1 row / theater_id | braintree_merchant_id | Not specified in provided DataEng files | Current theater dimension value; the supplied DataEng files do not declare its physical type. | — | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party |  | [lookup] Reads the field value from `public.dim_theater.braintree_merchant_id`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 091. `taxable_sales_fee_amount`
 
 ```mermaid
@@ -2604,7 +2465,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 5.00 | Derived |  | [passthrough] Copies `taxable_sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 092. `sales_fee_tax_amount`
 
 ```mermaid
@@ -2635,7 +2495,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 093. `returned_sales_fee_tax_amount`
 
 ```mermaid
@@ -2666,7 +2525,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `returned_sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 094. `sales_fee_tax_return_amount`
 
 ```mermaid
@@ -2697,7 +2555,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 095. `sales_fee_tax_amount_for_returned_purchase`
 
 ```mermaid
@@ -2728,7 +2585,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 096. `is_test`
 
 ```mermaid
@@ -2777,7 +2633,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] Copies `is_test` from `public.fact_transaction`. |
 
 </details>
-
 ## 097. `devicetype`
 
 ```mermaid
@@ -2802,7 +2657,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | devicetype | varchar | Device type | Mobile | Backend |  | [passthrough] Copies `devicetype` from `public.fact_transaction`. |
 
 </details>
-
 ## 098. `is_fanclub`
 
 ```mermaid
@@ -2828,7 +2682,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived |  | [passthrough] Copies `is_fanclub` from `public.fact_transaction`. |
 
 </details>
-
 ## 099. `waived_fanclub_fee_amount`
 
 ```mermaid
@@ -2858,7 +2711,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 0.00 | Backend |  | [passthrough] Copies `waived_fanclub_fee_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 100. `waived_fanclub_fee_ticket_count`
 
 ```mermaid
@@ -2888,7 +2740,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_ticket_count | numeric(19,4) | Waived fanclub fee ticket count | 0 | Backend |  | [passthrough] Copies `waived_fanclub_fee_ticket_count` from `public.fact_transaction`. |
 
 </details>
-
 ## 101. `charity_amount`
 
 ```mermaid
@@ -2917,7 +2768,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Backend |  | [passthrough] Copies `charity_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 102. `true_gross_transaction_amount`
 
 ```mermaid
@@ -2945,7 +2795,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross including charity | 43.50 | Backend |  | [passthrough] Copies `true_gross_transaction_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 103. `returned_charity_amount`
 
 ```mermaid
@@ -2973,7 +2822,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | -1.00 | Derived |  | [passthrough] Copies `returned_charity_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 104. `charity_return_amount`
 
 ```mermaid
@@ -3007,7 +2855,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | -1.00 | Derived |  | [passthrough] Copies `charity_return_amount` from `public.fact_transaction`. |
 
 </details>
-
 ## 105. `is_buynow`
 
 ```mermaid
@@ -3033,7 +2880,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived |  | [passthrough] Copies `is_buynow` from `public.fact_transaction`. |
 
 </details>
-
 ## 106. `charity_name`
 
 ```mermaid
@@ -3059,7 +2905,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | charity_name | varchar(256) | Charity name | Save The Arts | Backend |  | [passthrough] Copies `charity_name` from `public.fact_transaction`. |
 
 </details>
-
 ## 107. `partner_defined_data_value`
 
 ```mermaid
@@ -3085,7 +2930,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_defined_data_value | varchar | Partner payload | campaign=fall | Third-party |  | [passthrough] Copies `partner_defined_data_value` from `public.fact_transaction`. |
 
 </details>
-
 ## 108. `partner_channel`
 
 ```mermaid
@@ -3112,7 +2956,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
-
 ## 109. `partner_display_name`
 
 ```mermaid
@@ -3139,7 +2982,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
-
 ## 110. `partner_platform`
 
 ```mermaid
@@ -3166,7 +3008,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
-
 ## 111. `network_token_usage`
 
 ```mermaid
@@ -3197,7 +3038,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | network_token_usage | boolean | Network token usage | true | Derived |  | [passthrough] Copies `network_token_usage` from `public.fact_transaction`. |
 
 </details>
-
 ## 112. `property_group`
 
 ```mermaid
@@ -3221,10 +3061,9 @@ flowchart LR
 | raw_import_cache.transaction |  | Property_nm |  | Raw column(s) used by the dimension load for `property_group`. |  | Backend/Third-party |  |  |
 | raw_import_cache.refund | 1 row / refund line | Price_at | numeric | Return-side financial values |  | Backend |  |  |
 | public.fact_transaction | 1 row / transaction_guid | — | — | Dimension lookup anchor; this row has no direct value column for the field. | — | ETL |  | [lookup] The field value comes from the dimension value column named in Notes. |
-| analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend |  | [lookup] Reads the field value from `public.dim_property.property_group`; see Notes for dimension-side lineage. |
+| analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
-
 ## 113. `is_plf`
 
 ```mermaid
@@ -3249,7 +3088,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_plf | boolean | PLF flag | false | Derived |  | [passthrough] Copies `is_plf` from `public.fact_transaction`. |
 
 </details>
-
 ## 114. `is_imax`
 
 ```mermaid
@@ -3274,7 +3112,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_imax | boolean | IMAX flag | false | Derived |  | [passthrough] Copies `is_imax` from `public.fact_transaction`. |
 
 </details>
-
 ## 115. `is_3d`
 
 ```mermaid
@@ -3299,7 +3136,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_3d | boolean | 3D flag | false | Derived |  | [passthrough] Copies `is_3d` from `public.fact_transaction`. |
 
 </details>
-
 ## 116. `is_higher_fee_amenity`
 
 ```mermaid
@@ -3324,7 +3160,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | false | Derived |  | [passthrough] Copies `is_higher_fee_amenity` from `public.fact_transaction`. |
 
 </details>
-
 ## 117. `utm_source`
 
 ```mermaid
@@ -3350,7 +3185,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_source | varchar(255) | UTM source | google | Third-party |  | [passthrough] Copies `utm_source` from `public.fact_transaction`. |
 
 </details>
-
 ## 118. `utm_medium`
 
 ```mermaid
@@ -3376,7 +3210,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium | cpc | Third-party |  | [passthrough] Copies `utm_medium` from `public.fact_transaction`. |
 
 </details>
-
 ## 119. `utm_campaign`
 
 ```mermaid
@@ -3402,7 +3235,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign | fall_promo | Third-party |  | [passthrough] Copies `utm_campaign` from `public.fact_transaction`. |
 
 </details>
-
 ## 120. `utm_content`
 
 ```mermaid
@@ -3428,7 +3260,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_content | varchar(255) | UTM content | banner_a | Third-party |  | [passthrough] Copies `utm_content` from `public.fact_transaction`. |
 
 </details>
-
 ## 121. `utm_term`
 
 ```mermaid
@@ -3454,7 +3285,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_term | varchar(255) | UTM term | movie+tickets | Third-party |  | [passthrough] Copies `utm_term` from `public.fact_transaction`. |
 
 </details>
-
 ## 122. `ticket_tax_rate`
 
 ```mermaid
@@ -3479,7 +3309,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_rate | decimal(6,4) | PR ticket tax rate | 0.0825 | Backend |  | [passthrough] Copies `ticket_tax_rate` from `public.fact_transaction`. |
 
 </details>
-
 ## 123. `is_ticket_tax_transaction`
 
 ```mermaid
@@ -3504,7 +3333,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_ticket_tax_transaction | boolean | PR tax txn flag | true | Derived |  | [passthrough] Copies `is_ticket_tax_transaction` from `public.fact_transaction`. |
 
 </details>
-
 ## 124. `ticket_tax_amount`
 
 ```mermaid
@@ -3535,7 +3363,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived |  | [passthrough] Copies `pr_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 125. `pre_tax_ticket_sales_amount`
 
 ```mermaid
@@ -3570,7 +3397,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pre_tax_ticket_sales_amount | decimal(19,4) | Ticket sales amount before tax | 31.50 | Derived |  | [derived] Subtracts `public.fact_sales_fee_tax.pr_ticket_tax_amount` from `public.fact_transaction.ticket_sales_amount`. |
 
 </details>
-
 ## 126. `returned_ticket_tax_amount`
 
 ```mermaid
@@ -3601,7 +3427,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `returned_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 127. `ticket_tax_return_amount`
 
 ```mermaid
@@ -3632,7 +3457,6 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
-
 ## 128. `ticket_tax_amount_for_returned_purchase`
 
 ```mermaid
