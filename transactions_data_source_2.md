@@ -21,6 +21,8 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
 - Temporary tables, including `#` tables, are mentioned in notes and excluded from the permanent flow diagram and lineage table.
 - When a field has a fallback source, its primary source is named first and the fallback is identified in the notes.
 - If a value is passed through unchanged from the preceding stage, its Source cell keeps the preceding stage’s Source label.
+- The collapsible table for each field lists: Redshift Table, Table Grain, Column Name, Data Type, Description, Example Value, Source, GitHub Link, and Logic Explanation. GitHub Link cells are left blank.
+- The supplied DataEng repository documents transformation SQL, but its data dictionary says column DDL is managed outside the DAG and raw source schemas are owned upstream. Exact physical types and any grain not shown by the SQL cannot be verified from these files alone.
 - **Example Value** entries are illustrative formats, not sampled production values; `—` means no example is available in the supplied files.
 - Dimension join keys are not listed as field-source columns. Dimension value columns are named in Notes.
 - **Source** describes the origin or classification of the row's data:
@@ -2469,16 +2471,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -2488,8 +2483,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
@@ -2499,16 +2492,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -2518,8 +2504,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `returned_sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
@@ -2529,16 +2513,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -2548,8 +2525,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_return_amount` from `public.fact_sales_fee_tax`. |
@@ -2559,16 +2534,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -2578,8 +2546,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
@@ -3337,16 +3303,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -3356,8 +3315,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived |  | [passthrough] Copies `pr_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
@@ -3370,10 +3327,8 @@ flowchart LR
   r1["raw_import_cache.transactionItem"] --> p1["public.fact_transaction_item"]
   p1 --> s1["warehouse_loader.fact_transaction_item_aggregate"]
   s1 --> p["public.fact_transaction"]
-  r2["data_lake.salestaxtransaction"] --> s2["raw_import_cache.stgsalestaxtransaction"]
-  r2 --> s3["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  s2 --> t["public.fact_sales_fee_tax"]
-  s3 --> t
+  r2["raw_import_cache.stgsalestaxtransaction"] --> t["public.fact_sales_fee_tax"]
+  r3["raw_import_cache.stgsalestaxtransaction_unmatched"] --> t
   p --> a["analytics.transactions_data_source"]
   t --> a
 ```
@@ -3388,9 +3343,7 @@ flowchart LR
 | raw_import_cache.transactionItem | 1 row / transaction_guid + item_guid | Item_qy | integer | Item quantity | 2 | Backend |  | [passthrough] Reads `Item_qy` from `raw_import_cache.transactionItem`. |
 | raw_import_cache.transactionItem | 1 row / transaction_guid + item_guid | Item_at | numeric | Item amount | 35.00 | Backend |  | [passthrough] Reads `Item_at` from `raw_import_cache.transactionItem`. |
 | public.fact_transaction_item | 1 row / transaction_guid + item_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales-fee amount | 0.00 | Backend |  | [passthrough] Copies `taxable_at` from `raw_import_cache.transactionItem`. |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
 | warehouse_loader.fact_transaction_item_aggregate | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales amount | 70.00 | Backend |  | [aggregate] Sums `item_count × item_amount` from `public.fact_transaction_item`. |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_transaction | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 70.00 | Backend |  | [passthrough] Copies `item_sales_amount` from `warehouse_loader.fact_transaction_item_aggregate`. |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
@@ -3401,16 +3354,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -3420,8 +3366,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `returned_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
@@ -3431,16 +3375,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -3450,8 +3387,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_return_amount` from `public.fact_sales_fee_tax`. |
@@ -3461,16 +3396,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  n0_0["data_lake.salestaxtransaction"]
-  n1_0["raw_import_cache.stgsalestaxtransaction"]
-  n1_1["raw_import_cache.stgsalestaxtransaction_unmatched"]
-  n2_0["public.fact_sales_fee_tax"]
-  n3_0["analytics.transactions_data_source"]
-  n0_0 --> n1_0
-  n0_0 --> n1_1
-  n1_0 --> n2_0
-  n1_1 --> n2_0
-  n2_0 --> n3_0
+  r1["raw_import_cache.stgsalestaxtransaction"] --> p["public.fact_sales_fee_tax"]
+  r2["raw_import_cache.stgsalestaxtransaction_unmatched"] --> p
+  p --> a["analytics.transactions_data_source"]
 ```
 
 **Notes:** The sales-tax ETL also builds temporary #transactionSalesTax from public.fact_sales_fee_tax for its Analytics update.  
@@ -3480,8 +3408,6 @@ flowchart LR
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| data_lake.salestaxtransaction | line-item grain | total_lineitem_tax | mixed | Sales-tax feed used by the ticketing sales-tax load | — | Third-party |  |  |
-| raw_import_cache.stgsalestaxtransaction | line-item staging grain | total_lineitem_tax | mixed | Raw sales-tax rows staged before fact construction |  | Third-party |  | `[passthrough]` Loads data_lake.salestaxtransaction rows into raw_import_cache.stgsalestaxtransaction. |
 | raw_import_cache.stgsalestaxtransaction_unmatched |  |  |  | Unmatched sales-tax staging input; the supplied SQL does not map this table to a single field-specific source column here. |  | Third-party |  |  |
 | public.fact_sales_fee_tax | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Tax measures assembled by the salestax ETL for analytics consumption | — | Third-party/Derived |  |  |
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | decimal(19,4) | Ticket tax amount for returned purchase | 3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
