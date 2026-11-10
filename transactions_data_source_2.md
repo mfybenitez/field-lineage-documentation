@@ -58,6 +58,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction id | 9F2A... | Backend |  | [passthrough] Copies `transaction_guid` from `public.fact_transaction`. |
 
 </details>
+
 ## 002. `is_successful`
 
 ```mermaid
@@ -85,6 +86,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_successful | boolean | Success flag | true | Derived |  | [passthrough] Copies `is_successful` from `public.fact_transaction`. |
 
 </details>
+
 ## 003. `transaction_start_datetime_utc`
 
 ```mermaid
@@ -109,6 +111,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_utc | timestamp | Start UTC | 2026-10-01 16:10:00 | Backend |  | [passthrough] Copies `transaction_start_datetime_utc` from `public.fact_transaction`. |
 
 </details>
+
 ## 004. `transaction_start_datetime_los_angeles`
 
 ```mermaid
@@ -133,6 +136,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived |  | [rename/cast] Converts `transaction_start_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
+
 ## 005. `transaction_commit_datetime_utc`
 
 ```mermaid
@@ -157,6 +161,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_utc | timestamp | Commit UTC | 2026-10-01 16:11:05 | Backend |  | [passthrough] Copies `transaction_commit_datetime_utc` from `public.fact_transaction`. |
 
 </details>
+
 ## 006. `transaction_commit_datetime_los_angeles`
 
 ```mermaid
@@ -181,6 +186,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived |  | [rename/cast] Converts `transaction_commit_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
+
 ## 007. `transaction_rollback_datetime_utc`
 
 ```mermaid
@@ -205,6 +211,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_utc | timestamp | Rollback UTC | NULL | Backend |  | [passthrough] Copies `transaction_rollback_datetime_utc` from `public.fact_transaction`. |
 
 </details>
+
 ## 008. `transaction_rollback_datetime_los_angeles`
 
 ```mermaid
@@ -229,6 +236,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived |  | [rename/cast] Converts `transaction_rollback_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
+
 ## 009. `transaction_end_datetime_utc`
 
 ```mermaid
@@ -261,6 +269,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_utc | timestamp | End UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Copies `transaction_end_datetime_utc` from `public.fact_transaction`. |
 
 </details>
+
 ## 010. `transaction_end_datetime_los_angeles`
 
 ```mermaid
@@ -293,6 +302,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived |  | [rename/cast] Converts `transaction_end_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
+
 ## 011. `transaction_end_datetime_local`
 
 ```mermaid
@@ -414,6 +424,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | deltapurchasetoshowtimedate | int | Days purchase day->showtime day | 4 | Derived |  | [derived] Calculates days from transaction end to `performance_datetime_local`. |
 
 </details>
+
 ## 015. `point_of_sale_confirmation_code`
 
 ```mermaid
@@ -438,6 +449,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation code | CNF908812 | Backend |  | [passthrough] Copies `point_of_sale_confirmation_code` from `public.fact_transaction`. |
 
 </details>
+
 ## 016. `is_reserved_seating`
 
 ```mermaid
@@ -462,6 +474,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_reserved_seating | boolean | Reserved seating flag | true | Derived |  | [passthrough] Copies `is_reserved_seating` from `public.fact_transaction`. |
 
 </details>
+
 ## 017. `reserved_seats`
 
 ```mermaid
@@ -486,6 +499,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | reserved_seats | varchar(100) | Reserved seats | A10,A11 | Backend |  | [passthrough] Copies `reserved_seats` from `public.fact_transaction`. |
 
 </details>
+
 ## 018. `loyalty_code`
 
 ```mermaid
@@ -510,6 +524,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | loyalty_code | varchar(40) | Loyalty code | LOY123 | Backend |  | [passthrough] Copies `loyalty_code` from `public.fact_transaction`. |
 
 </details>
+
 ## 019. `performance_datetime_local`
 
 ```mermaid
@@ -534,6 +549,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance local | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `public.fact_transaction`. |
 
 </details>
+
 ## 020. `payment_types`
 
 ```mermaid
@@ -564,6 +580,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | VISA | Backend |  | [passthrough] Copies `payment_types` from `public.fact_transaction`. |
 
 </details>
+
 ## 021. `processor_order_ids`
 
 ```mermaid
@@ -602,6 +619,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | ord_123 | Third-party |  | [passthrough] Copies `processor_order_ids` from `public.fact_transaction`. |
 
 </details>
+
 ## 022. `affiliate_name`
 
 ```mermaid
@@ -625,6 +643,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | Fandango iOS App | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 023. `affiliate_group_name`
 
 ```mermaid
@@ -654,6 +673,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group name | Mobile | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 024. `affiliate_category_name`
 
 ```mermaid
@@ -680,6 +700,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category name | O&O | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 025. `affiliate_id`
 
 ```mermaid
@@ -706,6 +727,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 026. `channel`
 
 ```mermaid
@@ -729,6 +751,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | channel | varchar(10) | Channel group | App | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 027. `channel_ungrouped`
 
 ```mermaid
@@ -752,6 +775,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 028. `filmid_child`
 
 ```mermaid
@@ -784,6 +808,7 @@ flowchart TB
 | analytics.transactions_data_source | 1 row / transaction_guid | filmid_child | int | Child movie id | 10293 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 029. `filmname_child`
 
 ```mermaid
@@ -816,6 +841,7 @@ flowchart TB
 | analytics.transactions_data_source | 1 row / transaction_guid | filmname_child | varchar(400) | Child movie title | Example Movie | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 030. `filmid_parent`
 
 ```mermaid
@@ -851,6 +877,7 @@ flowchart TB
 | analytics.transactions_data_source | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 872 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 031. `filmname_parent`
 
 ```mermaid
@@ -886,6 +913,7 @@ flowchart TB
 | analytics.transactions_data_source | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent movie title | Franchise X | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 032. `releasedate`
 
 ```mermaid
@@ -912,6 +940,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | releasedate | date | Release date | 2026-09-14 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 033. `movie_tms_id`
 
 ```mermaid
@@ -938,6 +967,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 123456 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 034. `chainname`
 
 ```mermaid
@@ -964,6 +994,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Example Cinemas | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 035. `chainid`
 
 ```mermaid
@@ -990,6 +1021,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | chainid | varchar(10) | Chain id | CHN019 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 036. `pos_vendor`
 
 ```mermaid
@@ -1013,6 +1045,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 037. `awards_program_name`
 
 ```mermaid
@@ -1036,6 +1069,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | awards_program_name | varchar(320) | Awards program | Rewards+ | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 038. `theater_id`
 
 ```mermaid
@@ -1059,6 +1093,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | theater_id | int | Theater id | 4451 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 039. `theater_code`
 
 ```mermaid
@@ -1082,6 +1117,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | TH4451 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 040. `theater_name`
 
 ```mermaid
@@ -1105,6 +1141,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Example Hollywood | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 041. `pdi_id`
 
 ```mermaid
@@ -1128,6 +1165,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AVSTA | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 042. `pos_theater_id`
 
 ```mermaid
@@ -1151,6 +1189,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | POS-4451 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 043. `latitude`
 
 ```mermaid
@@ -1174,6 +1213,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 044. `longitude`
 
 ```mermaid
@@ -1197,6 +1237,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 045. `point_of_sale_id`
 
 ```mermaid
@@ -1220,6 +1261,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 1 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 046. `address_1`
 
 ```mermaid
@@ -1243,6 +1285,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 047. `address_2`
 
 ```mermaid
@@ -1266,6 +1309,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 048. `city_name`
 
 ```mermaid
@@ -1289,6 +1333,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 049. `state_code`
 
 ```mermaid
@@ -1312,6 +1357,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 050. `zip_code`
 
 ```mermaid
@@ -1335,6 +1381,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 051. `country_code`
 
 ```mermaid
@@ -1358,6 +1405,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 052. `tht_alternate_theater_phone_name`
 
 ```mermaid
@@ -1381,6 +1429,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate phone/name | Box Office | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 053. `chain_specific_site_id`
 
 ```mermaid
@@ -1404,6 +1453,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | chain_specific_site_id | varchar(10) | Chain site id | SITE-22 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 054. `paymentech_terminal_id`
 
 ```mermaid
@@ -1427,6 +1477,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | PT-100 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 055. `cybersource_terminal_id`
 
 ```mermaid
@@ -1450,6 +1501,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id | CS-200 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 056. `screen_count`
 
 ```mermaid
@@ -1473,6 +1525,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 057. `seat_count`
 
 ```mermaid
@@ -1496,6 +1549,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 058. `theater_time_zone_name`
 
 ```mermaid
@@ -1522,6 +1576,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 059. `dma_market_name`
 
 ```mermaid
@@ -1549,6 +1604,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] Reads the field value from `raw_import_cache.designatedMarketArea.market_name`; see Notes for dimension-side lineage. |
 
 </details>
+
 ## 060. `transaction_type_id`
 
 ```mermaid
@@ -1578,6 +1634,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type id | Purchase | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 061. `transaction_type_name`
 
 ```mermaid
@@ -1607,6 +1664,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name | Ticket Purchase | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 062. `user_agent_id`
 
 ```mermaid
@@ -1630,6 +1688,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent id | UA-1 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 063. `user_agent_description`
 
 ```mermaid
@@ -1653,6 +1712,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent description | iOS Safari | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 064. `purchase_funnel_id`
 
 ```mermaid
@@ -1677,6 +1737,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | 14 | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 065. `purchase_funnel_name`
 
 ```mermaid
@@ -1701,6 +1762,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | Guest Checkout | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 066. `return_method`
 
 ```mermaid
@@ -1724,6 +1786,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 067. `return_type_code`
 
 ```mermaid
@@ -1747,6 +1810,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 068. `return_type_description`
 
 ```mermaid
@@ -1770,6 +1834,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 069. `Affiliate Grouping`
 
 ```mermaid
@@ -1797,6 +1862,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping" | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] Buckets affiliate IDs into reporting groups with CASE rules. |
 
 </details>
+
 ## 070. `Affiliate Grouping - HIGH LEVEL BINS`
 
 ```mermaid
@@ -1824,6 +1890,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | "Affiliate Grouping - HIGH LEVEL BINS" | varchar(256) | High-level bucket | Fandango O&O | Derived |  | [conditional] Groups affiliate IDs into high-level reporting bins. |
 
 </details>
+
 ## 071. `apps`
 
 ```mermaid
@@ -1851,6 +1918,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  | [conditional] Classifies app types from affiliate IDs. |
 
 </details>
+
 ## 072. `platform`
 
 ```mermaid
@@ -1878,6 +1946,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  | [conditional] Classifies platform from channel and affiliate IDs. |
 
 </details>
+
 ## 073. `item_qty`
 
 ```mermaid
@@ -1906,6 +1975,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | item_qty | int | Item qty | 2 | Backend |  | [passthrough] Copies `item_count` from `public.fact_transaction`. |
 
 </details>
+
 ## 074. `gross_transaction_amount`
 
 ```mermaid
@@ -1935,6 +2005,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 42.50 | Derived |  | [passthrough] Copies `gross_transaction_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 075. `sales_fee_amount`
 
 ```mermaid
@@ -1967,6 +2038,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee | 5.00 | Backend |  | [passthrough] Copies `sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 076. `waived_sales_fee_ticket_count`
 
 ```mermaid
@@ -1996,6 +2068,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_ticket_count | numeric(19,4) | Waived sales fee ticket count | 0 | Backend |  | [passthrough] Copies `waived_sales_fee_ticket_count` from `public.fact_transaction`. |
 
 </details>
+
 ## 077. `returned_amount`
 
 ```mermaid
@@ -2023,6 +2096,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount | -42.50 | Derived |  | [passthrough] Copies `returned_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 078. `returned_fee_amount`
 
 ```mermaid
@@ -2052,6 +2126,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | -5.00 | Derived |  | [passthrough] Copies `returned_fee_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 079. `ticket_sales_amount`
 
 ```mermaid
@@ -2080,6 +2155,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Backend |  | [passthrough] Copies `ticket_sales_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 080. `waived_sales_fee_amount`
 
 ```mermaid
@@ -2109,6 +2185,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Waived sales fee amount | 0.00 | Backend |  | [passthrough] Copies `waived_sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 081. `surcharge_fee_amount`
 
 ```mermaid
@@ -2138,6 +2215,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Surcharge fee | 1.50 | Backend |  | [passthrough] Copies `surcharge_fee_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 082. `sales_fee_return_amount`
 
 ```mermaid
@@ -2171,6 +2249,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Sales fee return amount | -5.00 | Derived |  | [passthrough] Copies `sales_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 083. `surcharge_fee_return_amount`
 
 ```mermaid
@@ -2204,6 +2283,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Surcharge fee return amount | -1.50 | Derived |  | [passthrough] Copies `surcharge_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 084. `reservation_fee_return_amount`
 
 ```mermaid
@@ -2237,6 +2317,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | reservation_fee_return_amount | numeric(19,4) | Reservation fee return amount | 0.00 | Derived |  | [passthrough] Copies `reservation_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 085. `tax_return_amount`
 
 ```mermaid
@@ -2270,6 +2351,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | tax_return_amount | numeric(19,4) | Tax return amount | -2.10 | Derived |  | [passthrough] Copies `tax_return_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 086. `card_fee_return_amount`
 
 ```mermaid
@@ -2303,6 +2385,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | card_fee_return_amount | numeric(19,4) | Card fee return amount | -0.40 | Derived |  | [passthrough] Copies `card_fee_return_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 087. `sales_fee_amount_for_returned_purchase`
 
 ```mermaid
@@ -2351,6 +2434,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee amount for returned purchase | 5.00 | Derived |  | [passthrough] Copies `sales_fee_amount_for_returned_purchase` from `public.fact_transaction`. |
 
 </details>
+
 ## 088. `property_id`
 
 ```mermaid
@@ -2377,6 +2461,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 089. `pos_reference_cd`
 
 ```mermaid
@@ -2401,6 +2486,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pos_reference_cd | varchar(40) | POS reference code | POSREF1 | Backend |  | [passthrough] Copies `pos_reference_cd` from `public.fact_transaction`. |
 
 </details>
+
 ## 090. `braintree_merchant_id`
 
 ```mermaid
@@ -2424,6 +2510,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | bt_merch_1 | Third-party |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 091. `taxable_sales_fee_amount`
 
 ```mermaid
@@ -2467,6 +2554,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 5.00 | Derived |  | [passthrough] Copies `taxable_sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 092. `sales_fee_tax_amount`
 
 ```mermaid
@@ -2488,6 +2576,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount | decimal(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 093. `returned_sales_fee_tax_amount`
 
 ```mermaid
@@ -2509,6 +2598,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_sales_fee_tax_amount | decimal(19,4) | Returned sales fee tax amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `returned_sales_fee_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 094. `sales_fee_tax_return_amount`
 
 ```mermaid
@@ -2530,6 +2620,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_return_amount | decimal(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 095. `sales_fee_tax_amount_for_returned_purchase`
 
 ```mermaid
@@ -2551,6 +2642,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | decimal(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [passthrough] Copies `sales_fee_tax_amount_for_returned_purchase` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 096. `is_test`
 
 ```mermaid
@@ -2599,6 +2691,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] Copies `is_test` from `public.fact_transaction`. |
 
 </details>
+
 ## 097. `devicetype`
 
 ```mermaid
@@ -2623,6 +2716,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | devicetype | varchar | Device type | Mobile | Backend |  | [passthrough] Copies `devicetype` from `public.fact_transaction`. |
 
 </details>
+
 ## 098. `is_fanclub`
 
 ```mermaid
@@ -2648,6 +2742,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived |  | [passthrough] Copies `is_fanclub` from `public.fact_transaction`. |
 
 </details>
+
 ## 099. `waived_fanclub_fee_amount`
 
 ```mermaid
@@ -2677,6 +2772,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 0.00 | Backend |  | [passthrough] Copies `waived_fanclub_fee_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 100. `waived_fanclub_fee_ticket_count`
 
 ```mermaid
@@ -2706,6 +2802,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | waived_fanclub_fee_ticket_count | numeric(19,4) | Waived fanclub fee ticket count | 0 | Backend |  | [passthrough] Copies `waived_fanclub_fee_ticket_count` from `public.fact_transaction`. |
 
 </details>
+
 ## 101. `charity_amount`
 
 ```mermaid
@@ -2734,6 +2831,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Backend |  | [passthrough] Copies `charity_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 102. `true_gross_transaction_amount`
 
 ```mermaid
@@ -2761,6 +2859,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross including charity | 43.50 | Backend |  | [passthrough] Copies `true_gross_transaction_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 103. `returned_charity_amount`
 
 ```mermaid
@@ -2788,6 +2887,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | -1.00 | Derived |  | [passthrough] Copies `returned_charity_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 104. `charity_return_amount`
 
 ```mermaid
@@ -2821,6 +2921,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | -1.00 | Derived |  | [passthrough] Copies `charity_return_amount` from `public.fact_transaction`. |
 
 </details>
+
 ## 105. `is_buynow`
 
 ```mermaid
@@ -2846,6 +2947,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived |  | [passthrough] Copies `is_buynow` from `public.fact_transaction`. |
 
 </details>
+
 ## 106. `charity_name`
 
 ```mermaid
@@ -2871,6 +2973,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | charity_name | varchar(256) | Charity name | Save The Arts | Backend |  | [passthrough] Copies `charity_name` from `public.fact_transaction`. |
 
 </details>
+
 ## 107. `partner_defined_data_value`
 
 ```mermaid
@@ -2896,6 +2999,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_defined_data_value | varchar | Partner payload | campaign=fall | Third-party |  | [passthrough] Copies `partner_defined_data_value` from `public.fact_transaction`. |
 
 </details>
+
 ## 108. `partner_channel`
 
 ```mermaid
@@ -2922,6 +3026,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_channel | varchar | Partner channel id | TMO | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
+
 ## 109. `partner_display_name`
 
 ```mermaid
@@ -2948,6 +3053,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_display_name | varchar | Partner display name | T-Mobile Tuesdays | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
+
 ## 110. `partner_platform`
 
 ```mermaid
@@ -2974,6 +3080,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | partner_platform | varchar | Partner platform id | WEBVIEW | Third-party |  | [lookup] Reads the dimension value column identified in Notes. |
 
 </details>
+
 ## 111. `network_token_usage`
 
 ```mermaid
@@ -3004,6 +3111,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | network_token_usage | boolean | Network token usage | true | Derived |  | [passthrough] Copies `network_token_usage` from `public.fact_transaction`. |
 
 </details>
+
 ## 112. `property_group`
 
 ```mermaid
@@ -3030,6 +3138,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | property_group | varchar | Property group | Fandango | Backend |  | [lookup] Uses the dimension value described in Notes. |
 
 </details>
+
 ## 113. `is_plf`
 
 ```mermaid
@@ -3054,6 +3163,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_plf | boolean | PLF flag | false | Derived |  | [passthrough] Copies `is_plf` from `public.fact_transaction`. |
 
 </details>
+
 ## 114. `is_imax`
 
 ```mermaid
@@ -3078,6 +3188,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_imax | boolean | IMAX flag | false | Derived |  | [passthrough] Copies `is_imax` from `public.fact_transaction`. |
 
 </details>
+
 ## 115. `is_3d`
 
 ```mermaid
@@ -3102,6 +3213,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_3d | boolean | 3D flag | false | Derived |  | [passthrough] Copies `is_3d` from `public.fact_transaction`. |
 
 </details>
+
 ## 116. `is_higher_fee_amenity`
 
 ```mermaid
@@ -3126,6 +3238,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | false | Derived |  | [passthrough] Copies `is_higher_fee_amenity` from `public.fact_transaction`. |
 
 </details>
+
 ## 117. `utm_source`
 
 ```mermaid
@@ -3151,6 +3264,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_source | varchar(255) | UTM source | google | Third-party |  | [passthrough] Copies `utm_source` from `public.fact_transaction`. |
 
 </details>
+
 ## 118. `utm_medium`
 
 ```mermaid
@@ -3176,6 +3290,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium | cpc | Third-party |  | [passthrough] Copies `utm_medium` from `public.fact_transaction`. |
 
 </details>
+
 ## 119. `utm_campaign`
 
 ```mermaid
@@ -3201,6 +3316,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign | fall_promo | Third-party |  | [passthrough] Copies `utm_campaign` from `public.fact_transaction`. |
 
 </details>
+
 ## 120. `utm_content`
 
 ```mermaid
@@ -3226,6 +3342,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_content | varchar(255) | UTM content | banner_a | Third-party |  | [passthrough] Copies `utm_content` from `public.fact_transaction`. |
 
 </details>
+
 ## 121. `utm_term`
 
 ```mermaid
@@ -3251,6 +3368,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | utm_term | varchar(255) | UTM term | movie+tickets | Third-party |  | [passthrough] Copies `utm_term` from `public.fact_transaction`. |
 
 </details>
+
 ## 122. `ticket_tax_rate`
 
 ```mermaid
@@ -3275,6 +3393,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_rate | decimal(6,4) | PR ticket tax rate | 0.0825 | Backend |  | [passthrough] Copies `ticket_tax_rate` from `public.fact_transaction`. |
 
 </details>
+
 ## 123. `is_ticket_tax_transaction`
 
 ```mermaid
@@ -3299,6 +3418,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | is_ticket_tax_transaction | boolean | PR tax txn flag | true | Derived |  | [passthrough] Copies `is_ticket_tax_transaction` from `public.fact_transaction`. |
 
 </details>
+
 ## 124. `ticket_tax_amount`
 
 ```mermaid
@@ -3320,6 +3440,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_amount | decimal(19,4) | Vertex ticket tax amount | 3.50 | Third-party/Derived |  | [passthrough] Copies `pr_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 125. `pre_tax_ticket_sales_amount`
 
 ```mermaid
@@ -3350,6 +3471,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | pre_tax_ticket_sales_amount | decimal(19,4) | Ticket sales amount before tax | 31.50 | Derived |  | [derived] Subtracts `public.fact_sales_fee_tax.pr_ticket_tax_amount` from `public.fact_transaction.ticket_sales_amount`. |
 
 </details>
+
 ## 126. `returned_ticket_tax_amount`
 
 ```mermaid
@@ -3371,6 +3493,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | returned_ticket_tax_amount | decimal(19,4) | Returned ticket tax amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `returned_ticket_tax_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 127. `ticket_tax_return_amount`
 
 ```mermaid
@@ -3392,6 +3515,7 @@ flowchart LR
 | analytics.transactions_data_source | 1 row / transaction_guid | ticket_tax_return_amount | decimal(19,4) | Ticket tax return amount | -3.50 | Third-party/Derived |  | [passthrough] Copies `ticket_tax_return_amount` from `public.fact_sales_fee_tax`. |
 
 </details>
+
 ## 128. `ticket_tax_amount_for_returned_purchase`
 
 ```mermaid
