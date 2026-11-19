@@ -27,8 +27,6 @@ MSSQL -> raw_import_cache -> warehouse_loader -> public -> analytics
   - `ETL` — data populated or staged by a data pipeline.
   - `Derived` — data calculated or combined from other inputs.
   - Combined labels indicate mixed origins or processing. A blank Source cell means no source classification is specified.
-- **Example Value** entries are illustrative examples. `—` means no example is available in the supplied files.
-- The DataEng repository documents transformation SQL, but its data dictionary says column DDL is managed outside the DAG and raw source schemas are owned upstream. Where the supplied files do not specify a raw value, type, or source detail, the cell is left blank.
 
 ## Fields
 
