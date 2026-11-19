@@ -665,6 +665,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id, Affiliate_nm | int; varchar(400); int | Affiliate master | 11879; iPhone App; 7 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate_name | varchar(400) | Affiliate name | iPhone App | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -693,6 +694,7 @@ flowchart TB
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | int; varchar(400); int | Affiliate master | 11879; iPhone App; 7 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
 | `raw_import_cache.affiliateGroupMapping` | mapping / 1 row per group | affiliate_id, affiliate_group_id | int | Affiliate-to-group mapping | 11879 to iPhone App | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Tables exist in prd. |
 | `raw_import_cache.affiliateGroup` | mapping / 1 row per group | id, name | int, varchar(100) | Affiliate-to-group mapping | 11879 to iPhone App | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Tables exist in prd. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group | iPhone App | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -718,6 +720,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id, category_id | int; varchar(400); int | Affiliate master | 11879; iPhone App; 7 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
 | `raw_import_cache.affiliateCategory` | 1 row / category_id | Category_id; Category_nm | int; varchar(480) | Category | 7; Fandango Mobile Devices | Backend |  | [passthrough] Full snapshot of `tblAffiliateCategory`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate_category_name | varchar(480) | Affiliate category | Fandango Mobile Devices | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -743,6 +746,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | int | Affiliate on the transaction | 11879 | Backend |  | [passthrough] Carries the transaction affiliate id; it can seed IDs missing from the master feed. |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | int; varchar(400); int | Affiliate master | 11879; iPhone App; 7 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -766,6 +770,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Channel_cd | varchar(40) | Purchase channel code | WAP | Backend |  | [passthrough] Reads `Channel_cd` from `raw_import_cache.transaction`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | channel | varchar(10) | Channel group | Mobile | Derived |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -788,6 +793,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Channel_cd | varchar(40) | Purchase channel code | WAP | Backend |  | [passthrough] From `tblTransaction.Channel_cd`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | channel_ungrouped | varchar(40) | Channel name | WAP | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -810,6 +816,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid | movie_detail_id | int | Movie ID on the transaction | 246472 | Backend |  | [passthrough] Reads `movie_detail_id` from the transaction performance attribute. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | filmid_child | int | Child movie id | 246472 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -835,6 +842,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Active movie master | 246472; Street Fighter (2026); 2026-10-16 00:00:00 | Backend |  | [passthrough] Full daily snapshot of `movie_detail`. |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Deleted movie master | (as above) | Backend |  | [passthrough] Full daily snapshot of `Movie_Detail_Deleted`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | filmname_child | varchar(400) | Child title | Street Fighter (2026) | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -863,6 +871,7 @@ flowchart TB
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Active movie master | 246472; Street Fighter (2026); 2026-10-16 00:00:00 | Backend |  | [passthrough] Full daily snapshot of `movie_detail`. |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Deleted movie master | (as above) | Backend |  | [passthrough] Full daily snapshot of `Movie_Detail_Deleted`. |
 | `raw_import_cache.movieParentOverride` | 1 row / movie_id | movie_id; movie_parent_id | int; int | Manual parent override | 247001; 246990 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | filmid_parent | varchar(32) | Parent movie id | 246472 | Derived |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -891,6 +900,7 @@ flowchart TB
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Active movie master | 246472; Street Fighter (2026); 2026-10-16 00:00:00 | Backend |  | [passthrough] Full daily snapshot of `movie_detail`. |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Deleted movie master | (as above) | Backend |  | [passthrough] Full daily snapshot of `Movie_Detail_Deleted`. |
 | `raw_import_cache.movieParentOverride` | 1 row / movie_id | movie_id; movie_parent_id | int; int | Manual parent override | 247001; 246990 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | filmname_parent | varchar(400) | Parent title | Street Fighter (2026) | Derived |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -916,6 +926,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Active movie master | 246472; Street Fighter (2026); 2026-10-16 00:00:00 | Backend |  | [passthrough] Full daily snapshot of `movie_detail`. |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | movie_detail_id; title; date_released | int; varchar(400); timestamp | Deleted movie master | (as above) | Backend |  | [passthrough] Full daily snapshot of `Movie_Detail_Deleted`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | releasedate | date | Child release date | 2026-10-16 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -941,6 +952,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id (full daily reload) | tms_movie_id | integer | TMS movie id (active movies) | 345419 | Third-party |  |  |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id (full daily reload) | tms_movie_id | integer | TMS movie id (deleted movies) | 345419 | Third-party |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 345419 | Third-party |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -966,6 +978,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.chain` | 1 row / chain (full daily reload) | chain_name | varchar(50) | Chain name | Consolidated Theatres | Backend |  |  |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Chain_id | varchar(20) | Chain code on theater (fallback chain rows) | CONS | Backend |  | [passthrough] Supplies the fallback chain id when no chain master row exists. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Consolidated Theatres | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -991,6 +1004,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.chain` | 1 row / chain (full daily reload) | chainid | varchar(10) | Chain code | CONS | Backend |  |  |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Chain_id | varchar(20) | Chain code on theater (fallback chain rows) | CONS | Backend |  | [passthrough] Supplies the fallback chain id when no chain master row exists. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | chainid | varchar(10) | Chain code | CONS | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1016,6 +1030,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.chain` | 1 row / chain (full daily reload) | pos_vendor | varchar(50) | POS vendor | Vista | Backend |  |  |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Chain_id | varchar(20) | Theater's chain code | CONS | Backend |  | [passthrough] MSSQL `tblTheater.Chain_id`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1041,6 +1056,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.chain` | 1 row / chain (full daily reload) | Program_nm | varchar(80) | Loyalty program name | VIP Rewards | Backend |  |  |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Chain_id | varchar(20) | Theater's chain code | CONS | Backend |  | [passthrough] MSSQL `tblTheater.Chain_id`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | awards_program_name | varchar(320) | Loyalty program name | VIP Rewards | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1063,6 +1079,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Theater_pkey | integer | Theater id | 8818 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | theater_id | int | Theater id | 8818 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1085,6 +1102,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Theater_id | varchar(20) | Theater code | AAVJM | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | theater_code | varchar(10) | Theater code | AAVJM | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1107,6 +1125,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Theater_nm | varchar(100) | Theater name | Maya Salinas 14 Cinemas | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | theater_name | varchar(200) | Theater name | Maya Salinas 14 Cinemas | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1129,6 +1148,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Pdiid | varchar(12) | PDI id | AAVJM | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | pdi_id | varchar(6) | PDI id | AAVJM | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1151,6 +1171,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | POS_theater_id | varchar(40) | POS theater id | AAVJM_LIVE | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | pos_theater_id | varchar(20) | POS theater id | AAVJM_LIVE | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1173,6 +1194,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Lat_rl | real | Latitude | 34.10 | Backend |  | [passthrough] MSSQL `tblTheater.Lat_rl`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | latitude | real | Latitude | 34.10 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1195,6 +1217,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Long_rl | real | Longitude | -118.34 | Backend |  | [passthrough] MSSQL `tblTheater.Long_rl`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | longitude | real | Longitude | -118.34 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1217,6 +1240,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | POS_id | smallint | POS id | 29 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | point_of_sale_id | smallint | POS id | 29 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1239,6 +1263,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Address1_nm | varchar(100) | Address 1 | 123 Main St | Backend |  | [passthrough] MSSQL `tblTheater.Address1_nm`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | address_1 | varchar(200) | Address 1 | 123 Main St | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1261,6 +1286,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Address2_nm | varchar(100) | Address 2 | Suite 200 | Backend |  | [passthrough] MSSQL `tblTheater.Address2_nm`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | address_2 | varchar(200) | Address 2 | Suite 200 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1283,6 +1309,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | City_nm | varchar(80) | City | Los Angeles | Backend |  | [passthrough] MSSQL `tblTheater.City_nm`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | city_name | varchar(160) | City | Los Angeles | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1305,6 +1332,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | State_cd | varchar(4) | State code | CA | Backend |  | [passthrough] MSSQL `tblTheater.State_cd`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | state_code | varchar(2) | State code | CA | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1327,6 +1355,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Zip_cd | varchar(20) | ZIP code | 90028 | Backend |  | [passthrough] MSSQL `tblTheater.Zip_cd`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | zip_code | varchar(10) | ZIP code | 90028 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1349,6 +1378,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Country_cd | varchar(6) | Country code | US | Backend |  | [passthrough] MSSQL `tblTheater.Country_cd`, hourly create/update window. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | country_code | varchar(3) | Country code | US | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1371,6 +1401,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | AltTheaterPhone_nm | varchar(100) | Alternate theater phone name | Carmike Wynnsong 12 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | tht_alternate_theater_phone_name | varchar(200) | Alternate theater phone name | Carmike Wynnsong 12 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1393,6 +1424,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | ChainSpecificSite_id | varchar(160) | Chain site id | 474 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | chain_specific_site_id | varchar(160) | Chain site id | 474 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1415,6 +1447,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | PaymentechTerminal_id | varchar(24) | Paymentech terminal id | 074114 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | paymentech_terminal_id | varchar(24) | Paymentech terminal id | 074114 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1437,6 +1470,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | CybersourceTerminal_id | varchar(24) | Cybersource terminal id (deprecated; extract hard-codes '(deprecated)') | (deprecated) | ETL |  | [passthrough] Extract hard-codes `'(deprecated)' as CybersourceTerminal_id` (L23); the MSSQL column is **not** read. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | cybersource_terminal_id | varchar(24) | Cybersource terminal id (deprecated; extract hard-codes '(deprecated)') | (deprecated) | ETL |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1459,6 +1493,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Screens_nb | smallint | Screen count | 12 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | screen_count | smallint | Screen count | 12 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1481,6 +1516,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Seats_nb | integer | Seat count | 1800 | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | seat_count | int | Seat count | 1800 | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1506,6 +1542,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Zip_cd | varchar(20) | Theater ZIP (time-zone lookup key) | 90028 | Backend |  | [passthrough] MSSQL `tblTheater.Zip_cd`. |
 | `raw_import_cache.postalCodeTimeZone` | 1 row / postal_code | time_zone_name | varchar(50) | IANA time zone for ZIP | America/Los_Angeles | Third-party |  | [passthrough] Static/historical feed (last loaded 2017-02-27 per inventory); no MWAA extract/copy file exists in the repo. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | theater_time_zone_name | varchar(50) | Theater timezone | America/Los_Angeles | Third-party |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1528,6 +1565,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.designatedMarketArea` | ~1 row / zip_code (4 duplicate ZIPs in prd) | market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [passthrough] Static feed (last loaded 2016-11-23); no MWAA extract/copy in repo. `zip_code` is varchar(6). |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] Supplies the theater ZIP used to match the raw market value described in Notes. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] `LEFT JOIN raw_import_cache.designatedMarketArea dma ON dma.zip_code = tht.zip_code` (exact match; NULL when unmatched); selects `dma.market_name` (L196). |
 
 </details>
@@ -1556,6 +1594,7 @@ flowchart TB
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type (per-transaction source) | POSS-Vista Ticket Purchase | Backend |  |  |
 | `raw_import_cache.transactionPayment` | 1 row / payment | transaction_tp | varchar(40) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  |  |
 | `raw_import_cache.transactionItem` | 1 row / transaction item | transaction_tp | varchar(160) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1584,6 +1623,7 @@ flowchart TB
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type (per-transaction source) | POSS-Vista Ticket Purchase | Backend |  |  |
 | `raw_import_cache.transactionPayment` | 1 row / payment | transaction_tp | varchar(40) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  |  |
 | `raw_import_cache.transactionItem` | 1 row / transaction item | transaction_tp | varchar(160) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1606,6 +1646,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | UserAgent_nm | varchar(480) | Raw browser/app user agent | Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) ... | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | user_agent_id | varchar(480) | User agent string | Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) ... | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1628,6 +1669,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | UserAgent_nm | varchar(480) | Raw browser/app user agent | Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) ... | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | user_agent_description | varchar(480) | User agent string | Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) ... | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1650,6 +1692,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionPurchaseFunnel` | 1 row / transaction_guid + Funnel_cd | Funnel_cd | varchar(160) | Purchase funnel code | iosHandheld_MobileExpress | Backend |  |  |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | purchase_funnel_id | varchar(40) | Funnel id | iosHandheld_MobileExpress | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1672,6 +1715,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionPurchaseFunnel` | 1 row / transaction_guid | Funnel_cd | varchar(160) | Purchase funnel code (MSSQL `tblTransaction_PurchaseFunnel.Funnel_cd`) | iosHandheld_MobileExpress | Backend |  | [extract] Inner join of tblTransaction and tblTransaction_PurchaseFunnel on Transaction_GUID, window on `t.Create_dm`; loaded by delete/insert on Transaction_create_dm. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | purchase_funnel_name | varchar(100) | Funnel name | iosHandheld_MobileExpress | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1697,6 +1741,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.returnType` | 1 row / returnTypeCode | returnTypeCode, returnTypeDescription, returnMethod | varchar(3), varchar(20), varchar(20) | Return-type reference feed | REF / Refund / Self-service | Backend |  | [reference] Historical-only feed (last loaded 2017-12-20). No extract or copy SQL in the repo. |
 | `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | Confirmation_cd | varchar(40) | POS confirmation code; the first 3 characters mark the return type | REF123456 | Backend |  | [extract] `tblTransactionCommitted.Confirmation_cd`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | return_method | varchar(20) | Return method | Self-service | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1722,6 +1767,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.returnType` | 1 row / returnTypeCode | returnTypeCode, returnTypeDescription, returnMethod | varchar(3), varchar(20), varchar(20) | Return-type reference feed | REF / Refund / Self-service | Backend |  | [reference] Historical-only feed (last loaded 2017-12-20). No extract or copy SQL in the repo. |
 | `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | Confirmation_cd | varchar(40) | POS confirmation code; the first 3 characters mark the return type | REF123456 | Backend |  | [extract] `tblTransactionCommitted.Confirmation_cd`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | return_type_code | varchar(3) | Return type code | REF | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1747,6 +1793,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.returnType` | 1 row / returnTypeCode | returnTypeCode, returnTypeDescription, returnMethod | varchar(3), varchar(20), varchar(20) | Return-type reference feed | REF / Refund / Self-service | Backend |  | [reference] Historical-only feed (last loaded 2017-12-20). No extract or copy SQL in the repo. |
 | `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | Confirmation_cd | varchar(40) | POS confirmation code; the first 3 characters mark the return type | REF123456 | Backend |  | [extract] `tblTransactionCommitted.Confirmation_cd`. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | return_type_description | varchar(20) | Return type description | Refund | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -1772,6 +1819,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master (MSSQL tblAffiliate) | 11879 | Backend |  | [extract] Full reload (DELETE then COPY). |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | integer | Affiliate on the transaction (tblTransaction) | 11879 | Backend |  | [extract] Window on create_dm. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate grouping | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  |  |
 
 </details>
@@ -1797,6 +1845,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master (MSSQL tblAffiliate) | 11879 | Backend |  | [extract] Full reload (DELETE then COPY). |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | integer | Affiliate on the transaction (tblTransaction) | 11879 | Backend |  | [extract] Window on create_dm. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate grouping - high level bins | varchar(256) | High-level bucket | Fandango O&O | Derived |  |  |
 
 </details>
@@ -1822,6 +1871,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master (MSSQL tblAffiliate) | 11879 | Backend |  | [extract] Full reload (DELETE then COPY). |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | integer | Affiliate on the transaction (tblTransaction) | 11879 | Backend |  | [extract] Window on create_dm. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  |  |
 
 </details>
@@ -1847,6 +1897,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Channel_cd, Affiliate_id | varchar, integer | Purchase channel and affiliate (tblTransaction) | WAP / 11879 | Backend |  | [extract] Window on create_dm. |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master | 11879 | Backend |  | [extract] Full reload. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  |  |
 
 </details>
@@ -2306,6 +2357,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Property_nm | varchar | Property on the transaction | Fandango | Backend |  | [extract] |
 | `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund→parent purchase mapping | — | Backend |  | [mapping only] |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -2353,6 +2405,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / theater change | Braintree_Merchant_id | varchar(60) | Theater merchant id (tblTheater) | AMC_instant | Backend |  | [extract] |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | braintree_merchant_id | varchar(60) | Merchant id | AMC_instant | Third-party |  | [lookup] Uses the corresponding value from the side dimension. |
 
 </details>
@@ -2660,7 +2713,7 @@ flowchart TB
 ## 100. `waived_fanclub_fee_ticket_count`
 
 ```mermaid
-flowchart LR
+flowchart TB
   n0["`raw_import_cache.transactionItem`"]
   n1["`public.fact_transaction_item`"]
   n2["`warehouse_loader.fact_transaction_item_aggregate`"]
@@ -2904,6 +2957,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | Channel attribute value (`LOWER(TRIM(attribute_nm))='channel'`) | angelstudios | Third-party |  | [lookup] Own attribute (Create_dm ±10 min), or the parent purchase's attribute for refunds (no date filter). |
 | `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Maps a refund to its purchase for the attribute fallback. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | partner_channel | varchar(256) | Partner channel id | angelstudios | Third-party |  | [lookup] `dpc.partner_channel_id AS partner_channel` via `ft.partner_channel_key`. `''` when there is no channel. |
 
 </details>
@@ -2929,6 +2983,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | PartnerDisplayName value on the same transaction as Channel | Angel Studios | Third-party |  | [lookup] Paired with the transaction's channel attribute; display attribute Create_dm ±10 min. |
 | `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] A refund inherits the parent's channel key, and therefore its display name. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | partner_display_name | varchar(256) | Partner display name | Angel Studios | Third-party |  | [lookup] `dpc.partner_display_name`. `Unknown` for the no-channel key. |
 
 </details>
@@ -2954,6 +3009,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | PartnerPlatform attribute value (`LOWER(TRIM(attribute_nm))='partnerplatform'`) | WEBVIEW | Third-party |  | [lookup] Own attribute (±10 min), or the parent purchase's for refunds. |
 | `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | partner_platform | varchar(256) | Partner platform id | WEBVIEW | Third-party |  | [lookup] `dpp.partner_platform_id AS partner_platform`. |
 
 </details>
@@ -3010,6 +3066,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Property_nm | varchar(60) | Selling property name | Fandango | Backend |  | [passthrough] From `tblTransaction.Property_nm`. |
 | `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Lets a refund with blank Property_nm use the parent purchase's Property_nm. |
+| `public.fact_transaction` | 1 row / transaction_guid |  |  |  |  |  |  | [lookup] The dimension value described in Notes is joined to this transaction row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | property_group | varchar(60) | Property group | Fandango USA | Derived |  | [lookup] `dp.property_group` via `ft.property_key = dp.property_key`. |
 
 </details>
