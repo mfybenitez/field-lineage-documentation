@@ -2599,16 +2599,14 @@ flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
   n2["`raw_import_cache.transaction`"]
-  n3["`warehouse_loader.fact_transaction_base`"]
-  n4["`public.fact_transaction`"]
-  n5["`public.fact_sales_fee_tax`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n5
-  n1 --> n5
+  n3["`public.fact_transaction`"]
+  n4["`public.fact_sales_fee_tax`"]
+  n5["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n4
   n2 --> n3
   n3 --> n4
   n4 --> n5
-  n5 --> n6
 ```
 
 **Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -2620,8 +2618,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on purchases | 0.35 | Third-party/Derived |  | [conditional] lineitem_number=1, latest load_date, INNER JOIN fact_transaction; = total_lineitem_tax when type NOT IN (Refund, Exchange), else NULL. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
@@ -2636,21 +2633,19 @@ flowchart TB
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
   n2["`raw_import_cache.transaction`"]
   n3["`raw_import_cache.refund`"]
-  n4["`warehouse_loader.fact_transaction_base`"]
-  n5["`public.fact_transaction`"]
-  n6["`public.fact_sales_fee_tax (refund row)`"]
-  n7["`public.fact_return`"]
-  n8["`public.fact_sales_fee_tax (purchase row)`"]
-  n9["`analytics.transactions_data_source`"]
-  n0 --> n6
-  n1 --> n6
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax (refund row)`"]
+  n6["`public.fact_return`"]
+  n7["`public.fact_sales_fee_tax (purchase row)`"]
+  n8["`analytics.transactions_data_source`"]
+  n0 --> n5
+  n1 --> n5
   n2 --> n4
-  n3 --> n7
+  n3 --> n6
   n4 --> n5
   n5 --> n6
   n6 --> n7
   n7 --> n8
-  n8 --> n9
 ```
 
 **Notes:** This is a purchase-row rollup through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession purchases). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -2662,9 +2657,8 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on Refund/Exchange rows (see 094); this refund-side value is rolled up to the purchase row. |
 | `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
@@ -2680,16 +2674,14 @@ flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
   n2["`raw_import_cache.transaction`"]
-  n3["`warehouse_loader.fact_transaction_base`"]
-  n4["`public.fact_transaction`"]
-  n5["`public.fact_sales_fee_tax`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n5
-  n1 --> n5
+  n3["`public.fact_transaction`"]
+  n4["`public.fact_sales_fee_tax`"]
+  n5["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n4
   n2 --> n3
   n3 --> n4
   n4 --> n5
-  n5 --> n6
 ```
 
 **Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -2701,8 +2693,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] = total_lineitem_tax when type IN (Refund, Exchange). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
@@ -2717,21 +2708,19 @@ flowchart TB
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
   n2["`raw_import_cache.transaction`"]
   n3["`raw_import_cache.refund`"]
-  n4["`warehouse_loader.fact_transaction_base`"]
-  n5["`public.fact_transaction`"]
-  n6["`public.fact_sales_fee_tax (purchase row)`"]
-  n7["`public.fact_return`"]
-  n8["`public.fact_sales_fee_tax (refund row)`"]
-  n9["`analytics.transactions_data_source`"]
-  n0 --> n6
-  n1 --> n6
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax (purchase row)`"]
+  n6["`public.fact_return`"]
+  n7["`public.fact_sales_fee_tax (refund row)`"]
+  n8["`analytics.transactions_data_source`"]
+  n0 --> n5
+  n1 --> n5
   n2 --> n4
-  n3 --> n7
+  n3 --> n6
   n4 --> n5
   n5 --> n6
   n6 --> n7
   n7 --> n8
-  n8 --> n9
 ```
 
 **Notes:** This refund field copies the original purchase's sales-fee tax through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession refunds). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -2743,9 +2732,8 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on the original purchase | 0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on non-Refund/Exchange rows (see 092); copied to the refund through `public.fact_return`. |
 | `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
@@ -3598,16 +3586,14 @@ flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
   n2["`raw_import_cache.transaction`"]
-  n3["`warehouse_loader.fact_transaction_base`"]
-  n4["`public.fact_transaction`"]
-  n5["`public.fact_sales_fee_tax`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n5
-  n1 --> n5
+  n3["`public.fact_transaction`"]
+  n4["`public.fact_sales_fee_tax`"]
+  n5["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n4
   n2 --> n3
   n3 --> n4
   n4 --> n5
-  n5 --> n6
 ```
 
 **Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -3619,8 +3605,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 1.65 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where `status='OK'`, `document_number` not like `%_con`/`%_tkt`, `load_date > last watermark`. `document_number` is upper-cased. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Earlier Vertex rows that had no matching fact_transaction yet; retried each run | 1.65 | Third-party |  | [conditional] Unioned with stg, excluding `%_CON`/`%_TKT`. Rows are deleted once matched. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax for purchases | 1.65 | Third-party/Derived |  | [conditional] Line item 2 is matched to the transaction; `ticket_base` (own or parent-purchase ticket_sales_amount) must be non-null and ≠ 0, and the latest load_date per document and line is used. UPDATEs an existing `fact_sales_fee_tax` row created from line item 1: `pr_ticket_tax_amount = total_lineitem_tax` for non-Refund/Exchange rows, and `is_pr_transaction = 1` on every matched row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_tax_amount | numeric(19,4) | Vertex ticket tax amount (PR only; in scope from 2026-09-28) | 1.65 | Third-party/Derived |  | [rename/cast] `fstax.pr_ticket_tax_amount` → `ticket_tax_amount` in the half-hourly INSERT (LEFT JOIN on transaction_guid). The salestax UPDATE re-applies it for the last 180 days (`transaction_date_lag`). NULL for non-PR rows and refunds. |
@@ -3683,21 +3668,19 @@ flowchart TB
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
   n2["`raw_import_cache.transaction`"]
   n3["`raw_import_cache.refund`"]
-  n4["`warehouse_loader.fact_transaction_base`"]
-  n5["`public.fact_transaction`"]
-  n6["`public.fact_sales_fee_tax (refund row)`"]
-  n7["`public.fact_return`"]
-  n8["`public.fact_sales_fee_tax (purchase row)`"]
-  n9["`analytics.transactions_data_source`"]
-  n0 --> n6
-  n1 --> n6
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax (refund row)`"]
+  n6["`public.fact_return`"]
+  n7["`public.fact_sales_fee_tax (purchase row)`"]
+  n8["`analytics.transactions_data_source`"]
+  n0 --> n5
+  n1 --> n5
   n2 --> n4
-  n3 --> n7
+  n3 --> n6
   n4 --> n5
   n5 --> n6
   n6 --> n7
   n7 --> n8
-  n8 --> n9
 ```
 
 **Notes:** No nonzero production examples were found in the audit snapshot; the sign follows the negative-sum rule. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -3709,9 +3692,8 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax on the refund document | (see 127) | Third-party |  | [conditional] Line item 2 on Refund/Exchange documents. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | (see 127) | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on the refund | (Vertex sign, not negated) | Third-party/Derived |  | [conditional] See 127. |
 | `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(return_transaction_guid)`. |
@@ -3729,18 +3711,16 @@ flowchart TB
   n2["`raw_import_cache.transaction`"]
   n3["`raw_import_cache.refund`"]
   n4["`public.fact_return`"]
-  n5["`warehouse_loader.fact_transaction_base`"]
-  n6["`public.fact_transaction`"]
-  n7["`public.fact_sales_fee_tax`"]
-  n8["`analytics.transactions_data_source`"]
-  n0 --> n7
-  n1 --> n7
+  n5["`public.fact_transaction`"]
+  n6["`public.fact_sales_fee_tax`"]
+  n7["`analytics.transactions_data_source`"]
+  n0 --> n6
+  n1 --> n6
   n2 --> n5
   n3 --> n4
-  n4 --> n7
+  n4 --> n6
   n5 --> n6
   n6 --> n7
-  n7 --> n8
 ```
 
 **Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `#TICKET_TAX_BASE` matches refunds to purchases through `public.fact_return` and uses `COALESCE(purchase.ticket_sales_amount, own ticket_sales_amount)`. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -3752,10 +3732,9 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 0.0000 | Third-party |  | [conditional] Staged from `data_lake.salestaxtransaction`; filters as in 124. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 0.0000 | Third-party |  | [conditional] Excludes `%_CON`/`%_TKT`. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
 | `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | purchase_transaction_guid | varchar | Refund → purchase mapping, used for ticket_base | — | ETL |  | [lookup] `ticket_base = COALESCE(purchase.ticket_sales_amount, own)`, because refund rows have NULL ticket_sales_amount. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on Refund/Exchange rows | 0.0000 | Third-party/Derived |  | [conditional] Line item 2, `ticket_base` non-null and ≠ 0. UPDATE existing fst row: `ticket_tax_return_amount = total_lineitem_tax` when `transaction_type_id IN ('Refund','Exchange')`. Not negated (sign as delivered by Vertex). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | Ticket tax return amount (refund row) | 0.0000 | Third-party/Derived |  | [passthrough] INSERT from fstax, plus the salestax UPDATE (180 days). In scope from 2026-09-28. |
@@ -3770,21 +3749,19 @@ flowchart TB
   n1["`raw_import_cache.refund`"]
   n2["`raw_import_cache.stgsalestaxtransaction`"]
   n3["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n4["`warehouse_loader.fact_transaction_base`"]
-  n5["`public.fact_transaction`"]
-  n6["`public.fact_sales_fee_tax (purchase row)`"]
-  n7["`public.fact_return`"]
-  n8["`public.fact_sales_fee_tax (refund row)`"]
-  n9["`analytics.transactions_data_source`"]
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax (purchase row)`"]
+  n6["`public.fact_return`"]
+  n7["`public.fact_sales_fee_tax (refund row)`"]
+  n8["`analytics.transactions_data_source`"]
   n0 --> n4
-  n1 --> n7
-  n2 --> n6
-  n3 --> n6
+  n1 --> n6
+  n2 --> n5
+  n3 --> n5
   n4 --> n5
   n5 --> n6
   n6 --> n7
   n7 --> n8
-  n8 --> n9
 ```
 
 **Notes:** This refund field copies the original purchase tax through `public.fact_return`. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
@@ -3794,11 +3771,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` is the raw value behind `public.fact_transaction.transaction_type_key` (set in the base load), which joins `dim_transaction_type`. |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 1.65 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where `status='OK'`, `document_number` not like `%_con`/`%_tkt`, `load_date > last watermark`; line item 2 feeds the purchase row's `pr_ticket_tax_amount` (see 124). |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 1.65 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax on the original purchase | 1.65 | Third-party/Derived |  | [conditional] See 124 (Vertex line item 2). |
 | `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(purchase_transaction_guid)`. |
