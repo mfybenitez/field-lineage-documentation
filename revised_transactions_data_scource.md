@@ -131,7 +131,7 @@ flowchart TB
 | `raw_import_cache.transaction` | 1 row / transaction_guid | create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transaction`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_start_datetime | timestamp | Transaction start time (UTC) | 2026-10-01 16:10:00 | Backend |  | [rename/cast] Casts `raw_import_cache.transaction.create_dm` to timestamp. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_start_datetime | timestamp | Transaction start time in UTC | 2026-10-01 16:10:00 | Backend |  | [passthrough] Copies `transaction_start_datetime` from `warehouse_loader.fact_transaction_base`. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived |  | [rename/cast] Converts `transaction_start_datetime` from `public.fact_transaction` to US/Pacific time. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_start_datetime_los_angeles | timestamp | Pacific start datetime | 2026-10-01 09:10:00 | Derived |  | [derived] Converts `transaction_start_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
 
@@ -183,7 +183,7 @@ flowchart TB
 | `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transactionCommitted`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_commit_datetime | timestamp | Transaction commit time (UTC) | 2026-10-01 16:11:05 | Backend |  | [passthrough] Copies `create_dm` from `raw_import_cache.transactionCommitted`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_commit_datetime | timestamp | Transaction commit time in UTC | 2026-10-01 16:11:05 | Backend |  | [passthrough] Copies `transaction_commit_datetime` from `warehouse_loader.fact_transaction_base`. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived |  | [rename/cast] Converts `transaction_commit_datetime` from `public.fact_transaction` to US/Pacific time. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_commit_datetime_los_angeles | timestamp | Pacific commit datetime | 2026-10-01 09:11:05 | Derived |  | [derived] Converts `transaction_commit_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
 
@@ -235,7 +235,7 @@ flowchart TB
 | `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | create_dm | timestamp | Rollback time | NULL | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transactionRolledBack`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_rollback_datetime | timestamp | Transaction rollback time (UTC) | NULL | Backend |  | [passthrough] Copies `create_dm` from `raw_import_cache.transactionRolledBack`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_rollback_datetime | timestamp | Transaction rollback time in UTC | NULL | Backend |  | [passthrough] Copies `transaction_rollback_datetime` from `warehouse_loader.fact_transaction_base`. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived |  | [rename/cast] Converts `transaction_rollback_datetime` from `public.fact_transaction` to US/Pacific time. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_rollback_datetime_los_angeles | timestamp | Pacific rollback datetime | NULL | Derived |  | [derived] Converts `transaction_rollback_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
 
@@ -301,7 +301,7 @@ flowchart TB
 | `raw_import_cache.transaction` | 1 row / transaction_guid | create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transaction`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Uses the later commit or rollback time; falls back to `raw_import_cache.transaction.create_dm`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end time in UTC | 2026-10-01 16:11:05 | Derived |  | [passthrough] Carries the transaction end timestamp. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived |  | [rename/cast] Converts `transaction_end_datetime` from `public.fact_transaction` to US/Pacific time. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_end_datetime_los_angeles | timestamp | Pacific end datetime | 2026-10-01 09:11:05 | Derived |  | [derived] Converts `transaction_end_datetime` from `public.fact_transaction` to US/Pacific time. |
 
 </details>
 
@@ -312,28 +312,28 @@ flowchart TB
   n0["`raw_import_cache.transactionCommitted`"]
   n1["`raw_import_cache.transactionRolledBack`"]
   n2["`raw_import_cache.transaction`"]
-  n3["`warehouse_loader.fact_transaction_base`"]
-  n4["`raw_import_cache.postalCodeTimeZone`"]
+  n3["`raw_import_cache.postalCodeTimeZone`"]
+  n4["`warehouse_loader.fact_transaction_base`"]
   n5["`public.fact_transaction`"]
   n6["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
-  n2 --> n3
+  n0 --> n4
+  n1 --> n4
+  n2 --> n4
   n3 --> n5
   n4 --> n5
   n5 --> n6
 ```
 
-**Notes:** The end time is the later commit or rollback time, falling back to `raw_import_cache.transaction.create_dm`. The local time is calculated in `public.fact_transaction` using `public.dim_theater.theater_time_zone_name`, sourced from `raw_import_cache.postalCodeTimeZone.time_zone_name` via the theater dimension. It can be NULL for the Unknown theater. `theater_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Theater_pkey = dim_theater.theater_id` and `transaction.Create_dm` is in [`effective_datetime`, `expiration_datetime`); unmatched rows use the Unknown theater row (`theater_id` NULL).
+**Notes:** The end time is the later commit or rollback time, falling back to `raw_import_cache.transaction.create_dm`. The local time is calculated in `public.fact_transaction` using `public.dim_theater.theater_time_zone_name`, sourced from `raw_import_cache.postalCodeTimeZone.time_zone_name` via the theater dimension. It can be NULL for the Unknown theater. `theater_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Theater_pkey = dim_theater.theater_id` and `transaction.Create_dm` is in [`effective_datetime`, `expiration_datetime`); unmatched rows use the Unknown theater row (`theater_id` NULL). Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for transaction_end_datetime_local</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | Create_dm | timestamp | Commit time (UTC) | 2026-10-01 16:11:05 | Backend |  | [passthrough] Extracted from MSSQL `tblTransactionCommitted.Create_dm`. |
-| `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | Create_dm | timestamp | Rollback time (UTC) | NULL | Backend |  | [passthrough] Extracted from MSSQL `tblTransactionRolledBack.Create_dm`. |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | Create_dm | timestamp | Transaction start (UTC) | 2026-10-01 16:10:00 | Backend |  | [passthrough] Extracted from MSSQL `tblTransaction.Create_dm`. |
+| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | create_dm | timestamp | Commit time (UTC) | 2026-10-01 16:11:05 | Backend |  | [passthrough] Extracted from MSSQL `tblTransactionCommitted.Create_dm`. |
+| `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | create_dm | timestamp | Rollback time (UTC) | NULL | Backend |  | [passthrough] Extracted from MSSQL `tblTransactionRolledBack.Create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | create_dm | timestamp | Transaction start (UTC) | 2026-10-01 16:10:00 | Backend |  | [passthrough] Extracted from MSSQL `tblTransaction.Create_dm`. |
 | `raw_import_cache.postalCodeTimeZone` | 1 row / postal_code | time_zone_name | varchar(50) | Theater time zone source for the dimension lookup | America/Los_Angeles | Third-party |  | [passthrough] Static feed with no extract/copy SQL in the repo; `public.dim_theater` resolves the theater ZIP to this time zone. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_end_datetime | timestamp | Transaction end (UTC) | 2026-10-01 16:11:05 | Derived |  | [conditional] Later of commit or rollback (a tie goes to commit), else `transaction.Create_dm`. Commit joined if in [begin-10m, end+30d], rollback if in [begin-10m, end+1d]. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_end_datetime_local | timestamp | End time in theater time zone | 2026-10-01 09:11:05 | Derived |  | [derived/lookup] `CONVERT_TIMEZONE(dim_theater.theater_time_zone_name, transaction_end_datetime)`, dim_theater joined on theater_key. NULL when the theater is Unknown. |
@@ -348,14 +348,14 @@ flowchart TB
   n0["`raw_import_cache.transactionCommitted`"]
   n1["`raw_import_cache.transactionRolledBack`"]
   n2["`raw_import_cache.transaction`"]
-  n3["`warehouse_loader.fact_transaction_base`"]
-  n4["`raw_import_cache.movieDetail`"]
-  n5["`raw_import_cache.movieDetailDeleted`"]
+  n3["`raw_import_cache.movieDetail`"]
+  n4["`raw_import_cache.movieDetailDeleted`"]
+  n5["`warehouse_loader.fact_transaction_base`"]
   n6["`public.fact_transaction`"]
   n7["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
-  n2 --> n3
+  n0 --> n5
+  n1 --> n5
+  n2 --> n5
   n3 --> n6
   n4 --> n6
   n5 --> n6
@@ -407,7 +407,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id | date_released | timestamp | Release date (active movies) | 2026-09-14 00:00:00 | Backend |  | [passthrough] Full daily snapshot of MSSQL `movie_detail`. |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | date_released | timestamp | Release date (deleted movies) | 2026-09-14 00:00:00 | Backend |  | [passthrough] Full daily snapshot of MSSQL `Movie_Detail_Deleted`. |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction and performance | Performance_dm | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Source of `performance_datetime_local`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | Performance_dm | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Source of `performance_datetime_local`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `tpa.Performance_dm`; TPA is joined when its `Create_dm` is in [begin−10m, end+1d]. |
 | `public.fact_transaction` | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `warehouse_loader.fact_transaction_base`. |
 | `public.fact_transaction` | 1 row / transaction_guid | movie_release_date | date | Movie release date | 2026-09-14 | Backend |  | [lookup] `public.dim_movie.movie_release_date` joined on `movie_key`; `movieDetail.date_released` overrides `movieDetailDeleted.date_released`. `movie_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Movie_detail_id = dim_movie.movie_id`; unmatched rows use the Unknown row (`movie_id` NULL). |
@@ -444,9 +444,9 @@ flowchart TB
 | `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transactionCommitted`. |
 | `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | create_dm | timestamp | Rollback time | NULL | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transactionRolledBack`. |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transaction`. |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction and performance | Performance_dm | timestamp | Local showtime | 2026-10-05 19:30:00 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_end_datetime; performance_datetime_local | timestamp | End (UTC); showtime (local) | 2026-10-01 16:11:05; 2026-10-05 19:30:00 | Derived |  | [conditional] End time as in 009. [passthrough] `tpa.Performance_dm`. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_end_datetime; performance_datetime_local | timestamp | End (UTC); showtime (local) | 2026-10-01 16:11:05; 2026-10-05 19:30:00 | Derived |  | [passthrough] |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | Performance_dm | timestamp | Local showtime | 2026-10-05 19:30:00 | Backend |  | [passthrough] From MSSQL `tblTransaction_PerformanceAttribute`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_end_datetime; performance_datetime_local | timestamp; timestamp | End (UTC); showtime (local) | 2026-10-01 16:11:05; 2026-10-05 19:30:00 | Derived |  | [conditional] End time as in 009. [passthrough] `tpa.Performance_dm`. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_end_datetime; performance_datetime_local | timestamp; timestamp | End (UTC); showtime (local) | 2026-10-01 16:11:05; 2026-10-05 19:30:00 | Derived |  | [passthrough] Copies both columns from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | deltapurchasetoshowtimedate | int | Days from purchase day (Pacific) to show day (local) | 4 | Derived |  | [derived] `DATEDIFF(day, DATE_TRUNC('day', CONVERT_TIMEZONE('US/Pacific', transaction_end_datetime)), DATE_TRUNC('day', performance_datetime_local))`. |
 
 </details>
@@ -471,7 +471,7 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | confirmation_cd | varchar(40) | POS confirmation code | A0103339362 | Backend |  | [passthrough] Reads `confirmation_cd` from `raw_import_cache.transactionCommitted`. |
+| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | Confirmation_cd | varchar(40) | POS confirmation code | A0103339362 | Backend |  | [passthrough] Reads `confirmation_cd` from `raw_import_cache.transactionCommitted`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation code | A0103339362 | Backend |  | [passthrough] Copies `confirmation_cd` from `raw_import_cache.transactionCommitted`. |
 | `public.fact_transaction` | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation code | A0103339362 | Backend |  | [passthrough] Copies `point_of_sale_confirmation_code` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | point_of_sale_confirmation_code | varchar(40) | POS confirmation code | A0103339362 | Backend |  | [passthrough] Copies `point_of_sale_confirmation_code` from `public.fact_transaction`. |
@@ -571,7 +571,7 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid | performance_dm | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Reads `performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | Performance_dm | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Reads `performance_dm` from `raw_import_cache.transactionPerformanceAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | performance_datetime_local | timestamp | Local performance time | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_dm` from `raw_import_cache.transactionPerformanceAttribute`; TPA is joined when its `Create_dm` is in [begin−10m, end+1d]. |
 | `public.fact_transaction` | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance time associated with the transaction | 2026-10-05 19:30:00 | Backend |  | [passthrough] Carries the performance time. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance local | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `public.fact_transaction`. |
@@ -593,7 +593,7 @@ flowchart TB
   n3 --> n4
 ```
 
-**Notes:** `public.dim_payment_instrument` and `public.dim_payment_type` contribute payment-type values in the payment aggregate. The field aggregates `public.dim_payment_type.payment_type_id` for each transaction. Temporary ETL tables excluded from the flow: `#payment_instrument_lookup` and `#dim_payment_type_temp` (instrument resolution in `public.fact_payment`) and `#fact_payment_aggregate` (built before the upsert into `warehouse_loader.fact_payment_aggregate`).
+**Notes:** `public.dim_payment_instrument` and `public.dim_payment_type` contribute payment-type values in the payment aggregate. The field aggregates `public.dim_payment_type.payment_type_id` for each transaction. Temporary ETL tables excluded from the flow: `#payment_instrument_lookup` and `#dim_payment_type_temp` (instrument resolution in `public.fact_payment`) and `#fact_payment_aggregate` (built before the upsert into `warehouse_loader.fact_payment_aggregate`). `public.fact_payment` loads only payments whose transaction is in `warehouse_loader.fact_transaction_base` (so Subscription Purchase rows are excluded); the base table filters rows and is not shown in the flow.
 
 <details>
 <summary>Lineage table for payment_types</summary>
@@ -602,10 +602,10 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | Payment_tp | varchar(40) | Payment type at payment time | Apple Pay | Backend |  | [passthrough] Hourly extract of MSSQL `tblTransaction_Payment.Payment_tp`. |
 | `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | Account_cd | varchar(600) | Instrument code. NULLed in the extract for card and wallet types | (blank) | Backend |  | [conditional] Extract returns NULL for Credit Card, Masterpass, PayPal(OneTouch), Braintree Nonce/Token, Visa Checkout, Venmo, Android Pay, Apple Pay, V.me, Generic_Refund. Otherwise Account_cd. |
-| `public.fact_payment` | 1 row / payment_guid per transaction_guid | payment_type_id | varchar(40) | Payment type of the payment's instrument | Apple Pay | ETL |  | [lookup] `public.dim_payment_type.payment_type_id` reached through `payment_instrument_key` → `dim_payment_instrument.original_payment_type_key` (not `final_payment_type_key`). The instrument key is resolved in `factPayment.sql`: blank or NULL `Account_cd` → the placeholder instrument with `lookup_value = ''` and the raw `Payment_tp` type key; otherwise `Account_cd` matched on primary_card_number, secondary_card_number or payment_instrument_id (type re-checked for Exhibitor Discount/Reward/Subscription and Loyalty Card). |
+| `public.fact_payment` | 1 row / transaction_guid + payment_guid | payment_type_id | varchar(40) | Payment type of the payment's instrument | Apple Pay | ETL |  | [lookup] `public.dim_payment_type.payment_type_id` reached through `payment_instrument_key` → `dim_payment_instrument.original_payment_type_key` (not `final_payment_type_key`). The instrument key is resolved in `factPayment.sql`: blank or NULL `Account_cd` → the placeholder instrument with `lookup_value = ''` and the raw `Payment_tp` type key; otherwise `Account_cd` matched on primary_card_number, secondary_card_number or payment_instrument_id (type re-checked for Exhibitor Discount/Reward/Subscription and Loyalty Card). |
 | `warehouse_loader.fact_payment_aggregate` | 1 row / transaction_guid | payment_types | varchar(200) | Distinct payment types, A-Z | Credit Card,Promotion Codes | Derived |  | [lookup/aggregate] Join fact_payment to dim_payment_instrument (payment_instrument_key) to dim_payment_type on **original_payment_type_key**. GROUP BY txn and payment_type_id (distinct). `LEFT(LISTAGG(payment_type_id, ',') WITHIN GROUP (ORDER BY payment_type_id), 200)`. Upserted for txns with start in window. Gift cards resolved to SVS rows carry '' and contribute nothing; gift-card-only txns get ''. |
 | `public.fact_transaction` | 1 row / transaction_guid | payment_types | varchar(200) | Payment-type labels | Credit Card,Promotion Codes | Derived |  | [passthrough] LEFT JOIN fact_payment_aggregate on transaction_guid. NULL if there are no payments. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | Credit Card,Promotion Codes | Derived |  | [passthrough] |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | payment_types | varchar(200) | Payment types | Credit Card,Promotion Codes | Derived |  | [passthrough] Copies `payment_types` from `public.fact_transaction`. |
 
 </details>
 
@@ -632,22 +632,22 @@ flowchart TB
   n7 --> n8
 ```
 
-**Notes:** `public.fact_payment` derives processor_order_id with COALESCE in this order. Each join is processor/refund specific, so later candidates act as fallbacks only where that join applies; this is not one universal primary source. Temporary ETL tables excluded from the flow: `#fact_payment_processor_order_id_aggregate` and `#fact_payment_aggregate`, which are merged before the upsert into `warehouse_loader.fact_payment_aggregate`.
+**Notes:** `public.fact_payment` derives processor_order_id with COALESCE in this order. Each join is processor/refund specific, so later candidates act as fallbacks only where that join applies; this is not one universal primary source. Temporary ETL tables excluded from the flow: `#fact_payment_processor_order_id_aggregate` and `#fact_payment_aggregate`, which are merged before the upsert into `warehouse_loader.fact_payment_aggregate`. `public.fact_payment` loads only payments whose transaction is in `warehouse_loader.fact_transaction_base` (so Subscription Purchase rows are excluded); the base table filters rows and is not shown in the flow.
 
 <details>
 <summary>Lineage table for processor_order_ids</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | Payment_tp; Transaction_tp | varchar(40) | Drives payment rows and gates processor joins | PayPalOneTouch; (purchase) | Backend |  | [passthrough] Joined to fact_transaction_base on Transaction_GUID. Create_dm in [begin-10m, end+1d]. |
-| `raw_import_cache.processorBraintreeAuthorizationResponse` | 1 row / payment response | BraintreeTransaction_cd | varchar(10) | Braintree auth id | gkwdck4m | Third-party |  | [passthrough] Join on transaction_guid AND payment_guid, non-refund txn_tp, Create_dm window. |
-| `raw_import_cache.processorBraintreeRefundResponse` | 1 row / refund response | BraintreeTransaction_cd | varchar(10) | Braintree refund id | 6jbfwgpf | Third-party |  | [passthrough] Join on transaction_guid. Payment_tp in (Android Pay, Braintree Nonce, Apple Pay, PayPalOneTouch, Braintree Token). txn_tp = REFUND. |
-| `raw_import_cache.paypalTRRDetail` | 1 row / PayPal txn | transaction_id | varchar(24) | PayPal TRR id | 5XK12345AB678901C | Third-party |  | [passthrough] Loaded by the `paypal` DAG. Join `UPPER(invoice_id)=transaction_guid`, Payment_tp='PayPalOneTouch', transactional_status='S', initiation date in [begin, end+60d]. |
-| `raw_import_cache.paypalSTLDetail` | 1 row / PayPal txn | transaction_id | varchar(24) | PayPal STL id | 5XK12345AB678901C | Third-party |  | [passthrough] Loaded by the `paypal` DAG. Same join as TRR, without the status filter. |
-| `public.fact_payment` | 1 row / payment_guid per transaction_guid | processor_order_id | varchar(24) | Processor order id | GKWDCK4M | Third-party |  | [conditional] `COALESCE(UPPER(auth_resp.BraintreeTransaction_cd), UPPER(refund_resp.BraintreeTransaction_cd), trr.transaction_id, stl.transaction_id)`. |
+| `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | Payment_tp; transaction_tp | varchar(40); varchar(40) | Drives payment rows and gates processor joins | PayPalOneTouch; (purchase) | Backend |  | [passthrough] Joined to fact_transaction_base on Transaction_GUID. Create_dm in [begin-10m, end+1d]. |
+| `raw_import_cache.processorBraintreeAuthorizationResponse` | 1 row / transaction_guid + payment_guid | BraintreeTransaction_cd | varchar(10) | Braintree auth id | gkwdck4m | Third-party |  | [passthrough] Join on transaction_guid AND payment_guid, non-refund txn_tp, Create_dm window. |
+| `raw_import_cache.processorBraintreeRefundResponse` | 1 row / transaction_guid | BraintreeTransaction_cd | varchar(10) | Braintree refund id | 6jbfwgpf | Third-party |  | [passthrough] Join on transaction_guid. Payment_tp in (Android Pay, Braintree Nonce, Apple Pay, PayPalOneTouch, Braintree Token). txn_tp = REFUND. |
+| `raw_import_cache.paypalTRRDetail` | 1 row / transaction_id | transaction_id | varchar(24) | PayPal TRR id | 5XK12345AB678901C | Third-party |  | [passthrough] Loaded by the `paypal` DAG. Join `UPPER(invoice_id)=transaction_guid`, Payment_tp='PayPalOneTouch', transactional_status='S', initiation date in [begin, end+60d]. |
+| `raw_import_cache.paypalSTLDetail` | 1 row / transaction_id | transaction_id | varchar(24) | PayPal STL id | 5XK12345AB678901C | Third-party |  | [passthrough] Loaded by the `paypal` DAG. Same join as TRR, without the status filter. |
+| `public.fact_payment` | 1 row / transaction_guid + payment_guid | processor_order_id | varchar(24) | Processor order id | GKWDCK4M | Third-party |  | [conditional] `COALESCE(UPPER(auth_resp.BraintreeTransaction_cd), UPPER(refund_resp.BraintreeTransaction_cd), trr.transaction_id, stl.transaction_id)`. |
 | `warehouse_loader.fact_payment_aggregate` | 1 row / transaction_guid | processor_order_ids | varchar(124) | Distinct processor ids, sorted | GKWDCK4M | Derived |  | [aggregate] DISTINCT (txn, processor_order_id). `LEFT(LISTAGG(processor_order_id, ',') WITHIN GROUP (ORDER BY processor_order_id), 124)`. NULLs ignored. Merged into the payment aggregate. |
-| `public.fact_transaction` | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | GKWDCK4M | Third-party |  | [passthrough] |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | GKWDCK4M | Third-party |  | [passthrough] |
+| `public.fact_transaction` | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | GKWDCK4M | Derived |  | [passthrough] Copies `processor_order_ids` from `warehouse_loader.fact_payment_aggregate` (LEFT JOIN on transaction_guid). |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | processor_order_ids | varchar(124) | Processor order ids | GKWDCK4M | Derived |  | [passthrough] Copies `processor_order_ids` from `public.fact_transaction`. |
 
 </details>
 
@@ -697,7 +697,7 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | int | Affiliate key used to join affiliate group mapping | 11879 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
+| `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate key used to join affiliate group mapping | 11879 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
 | `raw_import_cache.affiliateGroupMapping` | 1 row / affiliate_id + affiliate_group_id | affiliate_id; affiliate_group_id | int; int | Affiliate-to-group mapping | 11879; — | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Table exists in prd. |
 | `raw_import_cache.affiliateGroup` | 1 row / id | id; name | int; varchar(100) | Affiliate group | —; iPhone App | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Table exists in prd. |
 | `public.fact_transaction` | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group | iPhone App | Backend |  | [lookup] `public.dim_affiliate.affiliate_group_name` joined on `affiliate_key`. Set by UPDATE from `affiliateGroup.name` through `affiliateGroupMapping` (many-to-many, so the chosen group is not deterministic when an affiliate has several). `affiliate_key` is set in `warehouse_loader.fact_transaction_base` where `dim_affiliate.affiliate_id = raw_import_cache.transaction.Affiliate_id`; NULL or unmatched IDs use the `affiliate_id = 0` (Unknown) row. |
@@ -752,8 +752,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | int | Affiliate on the transaction | 11879 | Backend |  | [passthrough] From `tblTransaction`. Also seeds dim_affiliate ids missing from `affiliate`. |
-| `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | int | Affiliate id | 11879 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | integer | Affiliate on the transaction | 11879 | Backend |  | [passthrough] From `tblTransaction`. Also seeds dim_affiliate ids missing from `affiliate`. |
+| `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate id | 11879 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
 | `public.fact_transaction` | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] `public.dim_affiliate.affiliate_id` joined on `affiliate_key`. IDs are inserted from `raw_import_cache.affiliate`, plus `raw_import_cache.transaction` IDs not yet in the dimension. `affiliate_key` is set in `warehouse_loader.fact_transaction_base` where `dim_affiliate.affiliate_id = raw_import_cache.transaction.Affiliate_id`; NULL or unmatched IDs use the `affiliate_id = 0` (Unknown) row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate_id | int | Affiliate id | 11879 | Backend |  | [lookup] `dim_affiliate.affiliate_id`. 0 when the transaction affiliate is NULL or unmatched. |
 
@@ -813,13 +813,13 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.movieDetail`"]
   n1["`raw_import_cache.movieDetailDeleted`"]
-  n2["`public.fact_transaction`"]
-  n3["`analytics.transactions_data_source`"]
-  n4["`raw_import_cache.transactionPerformanceAttribute`"]
-  n0 --> n2
-  n1 --> n2
-  n4 --> n2
+  n2["`raw_import_cache.transactionPerformanceAttribute`"]
+  n3["`public.fact_transaction`"]
+  n4["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n3
   n2 --> n3
+  n3 --> n4
 ```
 
 **Notes:** `public.dim_movie` joins to `public.fact_transaction`. The transaction's movie comes from `raw_import_cache.transactionPerformanceAttribute.Movie_detail_id`, which selects the dimension row; the value is `public.dim_movie.movie_id`. Active and deleted movie-detail snapshots (and showtime placeholders) populate the movie dimension; unmatched transactions use the Unknown row and return NULL. Value column: `public.dim_movie.movie_id`.
@@ -831,7 +831,7 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.movieDetail` | 1 row / movie_detail_id | movie_detail_id | int | Active movie key for the dimension row | 246472 | Backend |  | [passthrough] Full daily snapshot of `movie_detail`. |
 | `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | movie_detail_id | int | Deleted movie key for the dimension row | 246472 | Backend |  | [passthrough] Full daily snapshot of `Movie_Detail_Deleted`. |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction and performance | Movie_detail_id | int | Movie id on the transaction (matched to the dimension) | 246472 | Backend |  | [passthrough] From MSSQL `tblTransaction_PerformanceAttribute.Movie_detail_id`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | Movie_detail_id | int | Movie id on the transaction (matched to the dimension) | 246472 | Backend |  | [passthrough] From MSSQL `tblTransaction_PerformanceAttribute.Movie_detail_id`. |
 | `public.fact_transaction` | 1 row / transaction_guid | movie_id | int | Child movie id | 246472 | Backend |  | [lookup] `public.dim_movie.movie_id` joined on `movie_key`. Dimension IDs come from movieDetail, movieDetailDeleted and showtime placeholders. `movie_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Movie_detail_id = dim_movie.movie_id`; unmatched rows use the Unknown row (`movie_id` NULL). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | filmid_child | int | Child movie id | 246472 | Backend |  | [lookup] `dim_movie.movie_id`. NULL for the Unknown movie. |
 
@@ -850,7 +850,7 @@ flowchart TB
   n2 --> n3
 ```
 
-**Notes:** `public.dim_movie` joins `public.fact_transaction`. Active `raw_import_cache.movieDetail` is primary; `raw_import_cache.movieDetailDeleted` is fallback. Showtime tables may seed placeholder dimension rows but are not the title source. Value column: `public.dim_movie.movie_title`.
+**Notes:** `public.dim_movie` joins `public.fact_transaction`. Active `raw_import_cache.movieDetail` is primary; `raw_import_cache.movieDetailDeleted` is fallback. Movies seen only in `raw_import_cache.showtime` / `showtimeTMS` get the placeholder title `Unknown Title (Movie ID <id>)`. Value column: `public.dim_movie.movie_title`.
 
 <details>
 <summary>Lineage table for filmname_child</summary>
@@ -879,7 +879,7 @@ flowchart TB
   n3 --> n4
 ```
 
-**Notes:** `public.dim_movie` joins `public.fact_transaction`. A non-null `movieParentOverride` wins; otherwise DataEng matches a title prefix and release date. If there is no match, it uses the child movie ID. Value column: `public.dim_movie.movie_parent_id`. Temporary ETL tables excluded from the flow: `#movie_titles`, `#movie_parent_override` and `#movie_parent` (parent matching runs on `public.dim_movie` titles and release dates from all sources). The parent update applies only when the chosen parent ID exists in `public.dim_movie`; an override with a NULL parent maps to itself.
+**Notes:** `public.dim_movie` joins `public.fact_transaction`. Any `movieParentOverride` row wins (an override with a NULL parent maps the movie to itself); without an override, DataEng matches a title prefix and release date, and if nothing matches it uses the child movie ID. Value column: `public.dim_movie.movie_parent_id`. Temporary ETL tables excluded from the flow: `#movie_titles`, `#movie_parent_override` and `#movie_parent` (parent matching runs on `public.dim_movie` titles and release dates from all sources). The parent update applies only when the chosen parent ID exists in `public.dim_movie`; an override with a NULL parent maps to itself.
 
 <details>
 <summary>Lineage table for filmid_parent</summary>
@@ -909,7 +909,7 @@ flowchart TB
   n3 --> n4
 ```
 
-**Notes:** `public.dim_movie` joins `public.fact_transaction`. A non-null `movieParentOverride` selects the parent ID; otherwise DataEng matches a title prefix and release date, then defaults to the child movie. Deleted details and showtime placeholders cover missing active details. Value column: `public.dim_movie.movie_parent_title`. Temporary ETL tables excluded from the flow: `#movie_titles`, `#movie_parent_override` and `#movie_parent` (parent matching runs on `public.dim_movie` titles and release dates from all sources). The parent update applies only when the chosen parent ID exists in `public.dim_movie`; an override with a NULL parent maps to itself.
+**Notes:** `public.dim_movie` joins `public.fact_transaction`. Any `movieParentOverride` row selects the parent ID (an override with a NULL parent maps the movie to itself); without an override, DataEng matches a title prefix and release date, then defaults to the child movie. Deleted details and showtime placeholders cover missing active details. Value column: `public.dim_movie.movie_parent_title`. Temporary ETL tables excluded from the flow: `#movie_titles`, `#movie_parent_override` and `#movie_parent` (parent matching runs on `public.dim_movie` titles and release dates from all sources). The parent update applies only when the chosen parent ID exists in `public.dim_movie`; an override with a NULL parent maps to itself.
 
 <details>
 <summary>Lineage table for filmname_parent</summary>
@@ -971,8 +971,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.movieDetail` | 1 row / movie_detail_id (full daily reload) | tms_movie_id | integer | TMS movie id (active movies) | 345419 | Third-party |  | [passthrough] MSSQL `movie_detail.tms_movie_id`; copy is DELETE + COPY full table (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_movieDetail.sql#L1-L7). |
-| `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id (full daily reload) | tms_movie_id | integer | TMS movie id (deleted movies) | 345419 | Third-party |  | [passthrough] MSSQL `Movie_Detail_Deleted.tms_movie_id`; copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_movieDetailDeleted.sql#L1-L7. |
+| `raw_import_cache.movieDetail` | 1 row / movie_detail_id | tms_movie_id | integer | TMS movie id (active movies) | 345419 | Third-party |  | [passthrough] MSSQL `movie_detail.tms_movie_id`; copy is DELETE + COPY full table (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_movieDetail.sql#L1-L7). |
+| `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | tms_movie_id | integer | TMS movie id (deleted movies) | 345419 | Third-party |  | [passthrough] MSSQL `Movie_Detail_Deleted.tms_movie_id`; copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_movieDetailDeleted.sql#L1-L7. |
 | `public.fact_transaction` | 1 row / transaction_guid | movie_tms_id | integer | TMS movie id | 345419 | Third-party |  | [lookup] `public.dim_movie.movie_tms_id` joined on `movie_key`. `movieDetail.tms_movie_id` overrides `movieDetailDeleted.tms_movie_id`; NULL for showtime placeholders. `movie_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Movie_detail_id = dim_movie.movie_id`; unmatched rows use the Unknown row (`movie_id` NULL). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | movie_tms_id | int | Movie TMS id | 345419 | Third-party |  | [lookup] `ft.movie_key = dim_movie.movie_key` (L346-347); selects `film.movie_tms_id`. |
 
@@ -991,15 +991,15 @@ flowchart TB
   n2 --> n3
 ```
 
-**Notes:** `public.dim_chain` joins to `public.fact_transaction`. `raw_import_cache.chain` is the primary source. If a chain is absent there, the dimension load uses the theater record’s chain value for both the chain ID and fallback chain name. Value column: `public.dim_chain.chain_name`. `public.dim_theater` is a side lookup joined to the fact.
+**Notes:** `public.dim_chain` joins to `public.fact_transaction`. `raw_import_cache.chain` is the primary source. If a chain is absent there, the dimension load uses the theater record’s chain value for both the chain ID and fallback chain name. Value column: `public.dim_chain.chain_name`. `public.dim_theater` is a side lookup joined to the fact. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for chainname</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.chain` | 1 row / chain (full daily reload) | chain_name | varchar(50) | Chain name | Consolidated Theatres | Backend |  | [passthrough] MSSQL `Chain.chain_name`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
-| `raw_import_cache.theater` | 1 row / theater update | Chain_id |  | Theater chain code (dim_theater chain_key match; fallback chain ID and name) |  | Backend |  | [conditional] If the chain is absent from `raw_import_cache.chain`, `dimChain.sql` uses `TRIM(Chain_id)` for chain_id and chain_name. |
+| `raw_import_cache.chain` | 1 row / chainid | chain_name | varchar(50) | Chain name | Consolidated Theatres | Backend |  | [passthrough] MSSQL `Chain.chain_name`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
+| `raw_import_cache.theater` | 1 row / Theater_pkey per update | Chain_id |  | Theater chain code (dim_theater chain_key match; fallback chain ID and name) |  | Backend |  | [conditional] If the chain is absent from `raw_import_cache.chain`, `dimChain.sql` uses `TRIM(Chain_id)` for chain_id and chain_name. |
 | `public.fact_transaction` | 1 row / transaction_guid | chain_name | varchar(200) | Chain name | Consolidated Theatres | Backend |  | [lookup] `public.dim_chain.chain_name` joined on `chain_key`. New chains insert untrimmed `chain_name`; updates write `TRIM(chain_name)`; chains seen only in theater get `TRIM(Chain_id)`. `chain_key` is copied in `warehouse_loader.fact_transaction_base` from the matched `dim_theater` version (whose `chain_key` comes from `raw_import_cache.theater.Chain_id = dim_chain.chain_id`); unmatched theaters use the Unknown theater row's chain key. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | chainname | varchar(200) | Chain name | Consolidated Theatres | Backend |  | [lookup] `ft.chain_key = dim_chain.chain_key` (L350-351); selects `chain.chain_name AS ChainName`. |
 
@@ -1018,15 +1018,15 @@ flowchart TB
   n2 --> n3
 ```
 
-**Notes:** `public.dim_chain` joins to `public.fact_transaction`. `raw_import_cache.chain` is primary; the theater source provides the chain ID when the chain row is absent. Value column: `public.dim_chain.chain_id`. `public.dim_theater` is a side lookup joined to the fact.
+**Notes:** `public.dim_chain` joins to `public.fact_transaction`. `raw_import_cache.chain` is primary; the theater source provides the chain ID when the chain row is absent. Value column: `public.dim_chain.chain_id`. `public.dim_theater` is a side lookup joined to the fact. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for chainid</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.chain` | 1 row / chain (full daily reload) | chainid | varchar(10) | Chain code | CONS | Backend |  | [passthrough] MSSQL `Chain.chainid`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
-| `raw_import_cache.theater` | 1 row / theater update | Chain_id |  | Theater chain code (dim_theater chain_key match; fallback chain ID and name) |  | Backend |  | [conditional] If the chain is absent from `raw_import_cache.chain`, `dimChain.sql` uses `TRIM(Chain_id)` for chain_id and chain_name. |
+| `raw_import_cache.chain` | 1 row / chainid | chainid | varchar(10) | Chain code | CONS | Backend |  | [passthrough] MSSQL `Chain.chainid`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
+| `raw_import_cache.theater` | 1 row / Theater_pkey per update | Chain_id |  | Theater chain code (dim_theater chain_key match; fallback chain ID and name) |  | Backend |  | [conditional] If the chain is absent from `raw_import_cache.chain`, `dimChain.sql` uses `TRIM(Chain_id)` for chain_id and chain_name. |
 | `public.fact_transaction` | 1 row / transaction_guid | chain_id | varchar(10) | Chain code | CONS | Backend |  | [lookup] `public.dim_chain.chain_id` joined on `chain_key`. `TRIM(chain.chainid)`; chains seen only in theater get `TRIM(theater.Chain_id)`. `chain_key` is copied in `warehouse_loader.fact_transaction_base` from the matched `dim_theater` version (whose `chain_key` comes from `raw_import_cache.theater.Chain_id = dim_chain.chain_id`); unmatched theaters use the Unknown theater row's chain key. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | chainid | varchar(10) | Chain code | CONS | Backend |  | [lookup] `ft.chain_key = dim_chain.chain_key` (L350-351); selects `chain.chain_id AS ChainID`. |
 
@@ -1043,14 +1043,14 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_chain` joined to `public.fact_transaction`. Source: `raw_import_cache.chain`. Value column: `public.dim_chain.point_of_sale_vendor`. `public.dim_theater` is a side lookup joined into `public.fact_transaction`; it is omitted from the flow and lineage rows.
+**Notes:** `public.dim_chain` joined to `public.fact_transaction`. Source: `raw_import_cache.chain`. Value column: `public.dim_chain.point_of_sale_vendor`. `public.dim_theater` is a side lookup joined into `public.fact_transaction`; it is omitted from the flow and lineage rows. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for pos_vendor</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.chain` | 1 row / chain (full daily reload) | pos_vendor | varchar(50) | POS vendor | Vista | Backend |  | [passthrough] MSSQL `Chain.pos_vendor`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
+| `raw_import_cache.chain` | 1 row / chainid | pos_vendor | varchar(50) | POS vendor | Vista | Backend |  | [passthrough] MSSQL `Chain.pos_vendor`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
 | `public.fact_transaction` | 1 row / transaction_guid | point_of_sale_vendor | varchar(50) | POS vendor | Vista | Backend |  | [lookup] `public.dim_chain.point_of_sale_vendor` joined on `chain_key`. `chain.pos_vendor` on insert and update; NULL for chains seen only in theater. `chain_key` is copied in `warehouse_loader.fact_transaction_base` from the matched `dim_theater` version (whose `chain_key` comes from `raw_import_cache.theater.Chain_id = dim_chain.chain_id`); unmatched theaters use the Unknown theater row's chain key. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | pos_vendor | varchar(50) | POS vendor | Vista | Backend |  | [lookup] `ft.chain_key = dim_chain.chain_key` (L350-351); selects `chain.point_of_sale_vendor AS POS_Vendor`. |
 
@@ -1067,14 +1067,14 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_chain` joined to `public.fact_transaction`. Source: `raw_import_cache.chain`. Value column: `public.dim_chain.awards_program_name`. `public.dim_theater` is a side lookup joined into `public.fact_transaction`; it is omitted from the flow and lineage rows.
+**Notes:** `public.dim_chain` joined to `public.fact_transaction`. Source: `raw_import_cache.chain`. Value column: `public.dim_chain.awards_program_name`. `public.dim_theater` is a side lookup joined into `public.fact_transaction`; it is omitted from the flow and lineage rows. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for awards_program_name</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.chain` | 1 row / chain (full daily reload) | Program_nm | varchar(80) | Loyalty program name | VIP Rewards | Backend |  | [passthrough] MSSQL `Chain.Program_nm`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
+| `raw_import_cache.chain` | 1 row / chainid | Program_nm | varchar(80) | Loyalty program name | VIP Rewards | Backend |  | [passthrough] MSSQL `Chain.Program_nm`; DELETE + COPY (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_daily/sql/copyTicketingTables/warehouse_raw_import_cache_chain.sql#L1-L8). |
 | `public.fact_transaction` | 1 row / transaction_guid | awards_program_name | varchar(320) | Loyalty program name | VIP Rewards | Backend |  | [lookup] `public.dim_chain.awards_program_name` joined on `chain_key`. `chain.Program_nm` on insert and update. `chain_key` is copied in `warehouse_loader.fact_transaction_base` from the matched `dim_theater` version (whose `chain_key` comes from `raw_import_cache.theater.Chain_id = dim_chain.chain_id`); unmatched theaters use the Unknown theater row's chain key. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | awards_program_name | varchar(320) | Loyalty program name | VIP Rewards | Backend |  | [lookup] `ft.chain_key = dim_chain.chain_key` (L350-351); selects `chain.awards_program_name`. |
 
@@ -1085,15 +1085,15 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.theater`"]
-  n1["`public.fact_transaction`"]
-  n2["`analytics.transactions_data_source`"]
-  n3["`raw_import_cache.transactionPerformanceAttribute`"]
-  n0 --> n1
-  n3 --> n1
+  n1["`raw_import_cache.transactionPerformanceAttribute`"]
+  n2["`public.fact_transaction`"]
+  n3["`analytics.transactions_data_source`"]
+  n0 --> n2
   n1 --> n2
+  n2 --> n3
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. `raw_import_cache.transactionPerformanceAttribute.Theater_pkey` selects the theater version valid at transaction create time (Type-2 dimension). Value column: `public.dim_theater.theater_id`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. `raw_import_cache.transactionPerformanceAttribute.Theater_pkey` selects the theater version valid at transaction create time (Type-2 dimension). Value column: `public.dim_theater.theater_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for theater_id</summary>
@@ -1101,7 +1101,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Theater_pkey | integer | Theater id | 8818 | Backend |  | [passthrough] MSSQL `tblTheater.Theater_pkey`, hourly create/update window; copy delete-window + insert (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_hourly/sql/copyTicketingTables/theater.sql#L12-L22). |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction and performance | Theater_pkey | integer | Theater id on the transaction (matched to the dimension) | 8818 | Backend |  | [passthrough] From MSSQL `tblTransaction_PerformanceAttribute.Theater_pkey`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | Theater_pkey | integer | Theater id on the transaction (matched to the dimension) | 8818 | Backend |  | [passthrough] From MSSQL `tblTransaction_PerformanceAttribute.Theater_pkey`. |
 | `public.fact_transaction` | 1 row / transaction_guid | theater_id | integer | Theater id | 8818 | Backend |  | [lookup] `public.dim_theater.theater_id` joined on `theater_key`. Natural key of the Type-2 dimension; a tracked change creates a new dimension version, so the value is as of the version valid at transaction create time. `theater_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Theater_pkey = dim_theater.theater_id` and `transaction.Create_dm` is in [`effective_datetime`, `expiration_datetime`); unmatched rows use the Unknown theater row (`theater_id` NULL). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | theater_id | int | Theater id | 8818 | Backend |  | [lookup] `ft.theater_key = dim_theater.theater_key` (L352-353); value as of the theater version valid at transaction create time. |
 
@@ -1118,7 +1118,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.theater_code`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.theater_code`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for theater_code</summary>
@@ -1142,7 +1142,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.theater_name`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.theater_name`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for theater_name</summary>
@@ -1166,7 +1166,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.pdi_id`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.pdi_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for pdi_id</summary>
@@ -1190,7 +1190,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.point_of_sale_theater_id`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.point_of_sale_theater_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for pos_theater_id</summary>
@@ -1214,7 +1214,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-zero latitude from the theater's `raw_import_cache.theater` history (zeros treated as NULL) to every theater version, so the value is not point-in-time; a theater with only zero values gets NULL. Value column: `public.dim_theater.latitude`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-zero latitude from the theater's `raw_import_cache.theater` history (zeros treated as NULL) to every theater version, so the value is not point-in-time; a theater with only zero values gets NULL. Value column: `public.dim_theater.latitude`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for latitude</summary>
@@ -1238,7 +1238,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-zero longitude from the theater's `raw_import_cache.theater` history (zeros treated as NULL) to every theater version, so the value is not point-in-time; a theater with only zero values gets NULL. Value column: `public.dim_theater.longitude`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-zero longitude from the theater's `raw_import_cache.theater` history (zeros treated as NULL) to every theater version, so the value is not point-in-time; a theater with only zero values gets NULL. Value column: `public.dim_theater.longitude`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for longitude</summary>
@@ -1262,7 +1262,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.point_of_sale_id`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.point_of_sale_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for point_of_sale_id</summary>
@@ -1286,7 +1286,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null address from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time (an empty string counts as a value). Value column: `public.dim_theater.address_1`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null address from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time (an empty string counts as a value). Value column: `public.dim_theater.address_1`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for address_1</summary>
@@ -1310,7 +1310,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null address from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time (an empty string counts as a value). Value column: `public.dim_theater.address_2`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null address from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time (an empty string counts as a value). Value column: `public.dim_theater.address_2`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for address_2</summary>
@@ -1334,7 +1334,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null city from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.city_name`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null city from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.city_name`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for city_name</summary>
@@ -1358,7 +1358,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null state from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.state_code`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null state from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.state_code`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for state_code</summary>
@@ -1382,7 +1382,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null ZIP from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.zip_code`. The initial insert stores `TRIM(UPPER(Zip_cd))`; the type-1 update writes the raw latest value.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null ZIP from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.zip_code`. The initial insert stores `TRIM(UPPER(Zip_cd))`; the type-1 update writes the raw latest value. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for zip_code</summary>
@@ -1406,7 +1406,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null country from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.country_code`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null country from the theater's `raw_import_cache.theater` history to every theater version, so the value is not point-in-time. Value column: `public.dim_theater.country_code`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for country_code</summary>
@@ -1430,7 +1430,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.alternate_theater_phone_name`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.alternate_theater_phone_name`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for tht_alternate_theater_phone_name</summary>
@@ -1454,7 +1454,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.chain_specific_site_id`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.chain_specific_site_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for chain_specific_site_id</summary>
@@ -1478,7 +1478,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.paymentech_terminal_id`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.paymentech_terminal_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for paymentech_terminal_id</summary>
@@ -1502,7 +1502,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` is joined to `public.fact_transaction`. The current theater extract hardcodes `'(deprecated)'`; older Type-2 theater versions can still contain the former terminal ID. Value column: `public.dim_theater.cybersource_terminal_id`.
+**Notes:** `public.dim_theater` is joined to `public.fact_transaction`. The current theater extract hardcodes `'(deprecated)'`; older Type-2 theater versions can still contain the former terminal ID. Value column: `public.dim_theater.cybersource_terminal_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for cybersource_terminal_id</summary>
@@ -1526,7 +1526,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.screen_count`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.screen_count`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for screen_count</summary>
@@ -1550,7 +1550,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.seat_count`.
+**Notes:** `public.dim_theater` joined to `public.fact_transaction`. Value column: `public.dim_theater.seat_count`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for seat_count</summary>
@@ -1576,7 +1576,7 @@ flowchart TB
   n2 --> n3
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. `postalCodeTimeZone` supplies the time-zone name from the theater ZIP. If an incoming row has no ZIP, the dimension ETL carries forward the prior ZIP and resolves its time zone; without a ZIP, or when the ZIP has no `postalCodeTimeZone` match, the type-1 update sets the value to NULL. This stays documented as a dimension side flow. Value column: `public.dim_theater.theater_time_zone_name`. Value source: `raw_import_cache.postalCodeTimeZone.time_zone_name`; the theater ZIP selects the lookup value.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. `postalCodeTimeZone` supplies the time-zone name from the theater ZIP. When an incoming theater row has no ZIP, the new dimension version keeps the prior version's time zone (it is not re-resolved from the prior ZIP). The type-1 update then overwrites every version with the time zone of the latest non-null ZIP; if that ZIP has no `postalCodeTimeZone` match, the value becomes NULL. This stays documented as a dimension side flow. Value column: `public.dim_theater.theater_time_zone_name`. Value source: `raw_import_cache.postalCodeTimeZone.time_zone_name`; the theater ZIP selects the lookup value. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for theater_time_zone_name</summary>
@@ -1594,16 +1594,16 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`public.fact_transaction`"]
-  n1["`raw_import_cache.designatedMarketArea`"]
-  n2["`analytics.transactions_data_source`"]
-  n3["`raw_import_cache.theater`"]
-  n3 --> n0
+  n0["`raw_import_cache.designatedMarketArea`"]
+  n1["`raw_import_cache.theater`"]
+  n2["`public.fact_transaction`"]
+  n3["`analytics.transactions_data_source`"]
+  n0 --> n3
   n1 --> n2
-  n0 --> n2
+  n2 --> n3
 ```
 
-**Notes:** The field value comes from `raw_import_cache.designatedMarketArea.market_name`. Analytics joins the DMA source with the transaction’s theater context from `public.fact_transaction`; the theater dimension supports that match. The ZIP is only used to find the market row, not as the field value.
+**Notes:** The field value comes from `raw_import_cache.designatedMarketArea.market_name`. Analytics joins the DMA source with the transaction’s theater context from `public.fact_transaction`; the theater dimension supports that match. The ZIP is only used to find the market row, not as the field value. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for dma_market_name</summary>
@@ -1611,8 +1611,8 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.theater` | 1 row / Theater_pkey per update | Zip_cd | varchar(20) | Theater ZIP (DMA lookup key) | 90028 | Backend |  | [passthrough] MSSQL `tblTheater.Zip_cd`, hourly create/update window. |
-| `public.fact_transaction` | 1 row / transaction_guid | zip_code | varchar(10) | Theater ZIP used to find the DMA row | 90028 | Backend |  | [lookup] `public.dim_theater.zip_code` joined on `theater_key`. Type-1 latest ZIP; Analytics matches it exactly to `designatedMarketArea.zip_code`. `theater_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Theater_pkey = dim_theater.theater_id` and `transaction.Create_dm` is in [`effective_datetime`, `expiration_datetime`); unmatched rows use the Unknown theater row (`theater_id` NULL). |
 | `raw_import_cache.designatedMarketArea` | ~1 row / zip_code (4 duplicate ZIPs in prd) | market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [passthrough] Static feed (last loaded 2016-11-23); no MWAA extract/copy in repo. `zip_code` is varchar(6). |
+| `public.fact_transaction` | 1 row / transaction_guid | zip_code | varchar(10) | Theater ZIP used to find the DMA row | 90028 | Backend |  | [lookup] `public.dim_theater.zip_code` joined on `theater_key`. Type-1 latest ZIP; Analytics matches it exactly to `designatedMarketArea.zip_code`. `theater_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Theater_pkey = dim_theater.theater_id` and `transaction.Create_dm` is in [`effective_datetime`, `expiration_datetime`); unmatched rows use the Unknown theater row (`theater_id` NULL). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | dma_market_name | varchar(255) | DMA market name | Los Angeles | Third-party |  | [lookup] `LEFT JOIN raw_import_cache.designatedMarketArea dma ON dma.zip_code = tht.zip_code` (exact match; NULL when unmatched); selects `dma.market_name` (L196). |
 
 </details>
@@ -1640,8 +1640,8 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type (per-transaction source) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`, half-hourly create_dm window (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_half_hourly/sql/copyTicketingTables/warehouse_raw_import_cache_transaction.sql#L11-L18). |
-| `raw_import_cache.transactionPayment` | 1 row / payment | transaction_tp | varchar(40) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L2-12); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_hourly/sql/copyTicketingTables/transactionPayment.sql#L1-L53. |
-| `raw_import_cache.transactionItem` | 1 row / transaction item | transaction_tp | varchar(160) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L14-24); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_half_hourly/sql/copyTicketingTables/warehouse_raw_import_cache_transactionItem.sql#L1-L20. |
+| `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | transaction_tp | varchar(40) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L2-12); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_hourly/sql/copyTicketingTables/transactionPayment.sql#L1-L53. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | transaction_tp | varchar(160) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L14-24); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_half_hourly/sql/copyTicketingTables/warehouse_raw_import_cache_transactionItem.sql#L1-L20. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [lookup] `public.dim_transaction_type.transaction_type_id` joined on `transaction_type_key`. New values are inserted as `MIN(TRIM(transaction_tp))` per `LOWER(TRIM())`, seeded from transactionPayment, transactionItem, then transaction. `transaction_type_key` is set in `warehouse_loader.fact_transaction_base` where `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match); unmatched rows use the `transaction_type_id = ''` (Unknown) row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [lookup] `ft.transaction_type_key = dim_transaction_type.transaction_type_key` (L356-357). |
 
@@ -1670,8 +1670,8 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type (per-transaction source) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`, half-hourly create_dm window (https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_half_hourly/sql/copyTicketingTables/warehouse_raw_import_cache_transaction.sql#L11-L18). |
-| `raw_import_cache.transactionPayment` | 1 row / payment | transaction_tp | varchar(40) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L2-12); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_hourly/sql/copyTicketingTables/transactionPayment.sql#L1-L53. |
-| `raw_import_cache.transactionItem` | 1 row / transaction item | transaction_tp | varchar(160) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L14-24); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_half_hourly/sql/copyTicketingTables/warehouse_raw_import_cache_transactionItem.sql#L1-L20. |
+| `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | transaction_tp | varchar(40) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L2-12); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_hourly/sql/copyTicketingTables/transactionPayment.sql#L1-L53. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | transaction_tp | varchar(160) | Transaction type (dim seed only) | POSS-Vista Ticket Purchase | Backend |  | [passthrough] Seeds dim only (dimTransactionType L14-24); copy https://github.com/fandango/dataeng_datawarehouse/blob/master/dags/ticketing/warehouse_ticketing_half_hourly/sql/copyTicketingTables/warehouse_raw_import_cache_transactionItem.sql#L1-L20. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type name (same as the id) | POSS-Vista Ticket Purchase | Backend |  | [lookup] `public.dim_transaction_type.transaction_type_name` joined on `transaction_type_key`. Inserted with the same `MIN(TRIM(transaction_tp))` value as the id. `transaction_type_key` is set in `warehouse_loader.fact_transaction_base` where `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match); unmatched rows use the `transaction_type_id = ''` (Unknown) row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | transaction_type_name | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [lookup] `ft.transaction_type_key = dim_transaction_type.transaction_type_key` (L356-357). |
 
@@ -1877,7 +1877,7 @@ flowchart TB
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master (MSSQL tblAffiliate) | 11879 | Backend |  | [passthrough] Full reload (DELETE then COPY). |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | integer | Affiliate on the transaction (tblTransaction) | 11879 | Backend |  | [passthrough] Window on create_dm. |
 | `public.fact_transaction` | 1 row / transaction_guid | affiliate_id | int | Affiliate id evaluated by the CASE | 11879 | Backend |  | [lookup] `public.dim_affiliate.affiliate_id` joined on `affiliate_key`. `affiliate_key` is set in `warehouse_loader.fact_transaction_base` where `dim_affiliate.affiliate_id = raw_import_cache.transaction.Affiliate_id`; NULL or unmatched IDs use the `affiliate_id = 0` (Unknown) row. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | Affiliate Grouping | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] First-match CASE on dim_affiliate.affiliate_id: iPhone App (11879,11862,12100,12099,12450,12796); Android App (12139,12003,12202,12192,12131,12797); Core Fandango (NULL,0,-1,12240,12093,11828,12062,12249,12004,11905,12200,12097,12278,12007,12095,11950,11951,13053); Flixster (13044,13045,13038-13041,13070,13071,11747,13069); Rotten Tomatoes (13036,13037); Google OneBox (11584,11586); IMDb; AOL; Yahoo; MSN; NCM; IMAX; Bing; WL AMC; WL Regal; WL Cobb; WL Marcus; Other White Labels; 13059 Facebook Ticketing; 13050 Messenger Bot; 13061 iMessage; 27753 Spotlight; 13056 Snapchat; 13063 Alexa; ELSE Other Referrers (full lists at the link). |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | Affiliate Grouping | varchar(256) | Detailed affiliate bucket | iPhone App | Derived |  | [conditional] First-match CASE on `dim_affiliate.affiliate_id`: 'iPhone App' (11879, 11862, 12100, 12099, 12450, 12796); 'Android App' (12139, 12003, 12202, 12192, 12131, 12797); 'Fandango O&O: Core Fandango' (NULL, 0, -1, 12240, 12093, 11828, 12062, 12249, 12004, 11905, 12200, 12097, 12278, 12007, 12095, 11950, 11951, 13053); 'Fandango O&O: Flixster' (13044, 13045, 13038, 13039, 13040, 13041, 13070, 13071, 11747, 13069); 'Fandango O&O: Rotten Tomatoes' (13036, 13037); 'Portal: Google OneBox' (11584, 11586); 'Portal: IMDb' (12896, 12899, 12897, 12894, 12900, 12898, 12895, 10243, 12844, 12847, 12848, 12845, 12843, 12846, 12849); 'Portal: AOL' (12377, 12378, 12394, 12551, 12552, 12553, 12281); 'Portal: Yahoo' (12215, 12216); 'Portal: MSN' (12415, 12416); 'Portal: NCM' (11551, 12756, 11871, 12971); 'Portal: IMAX' (11533, 11949, 11944, 11498); 'Portal: Bing' (12988, 12987, 12323, 12315, 12316, 13031); 'White Label: AMC' (11607, 11688, 11907, 12383, 12384, 12498, 12632, 11655, 11656, 11657, 11658, 11659, 11660, 11661, 11662, 11663, 11664, 11763, 12010); 'White Label: Regal' (12878, 12879, 12963, 11481, 12284, 12964, 12283, 12232, 11874, 11919, 12233); 'White Label: Cobb' (12112, 11491); 'White Label: Marcus' (12982, 12560); 'Other White Labels' (11929, 11488, 12259, 11487, 11484, 12633, 12959, 12856, 12719, 11568, 11614, 11482, 11855, 11478, 11479, 11480, 11483, 11485, 11486, 11489, 11490, 11548, 11558, 11589, 11616, 11645, 12273, 12628, 12673, 12674, 12758, 13023, 13026); 'Facebook Ticketing' (13059); 'Facebook Messenger Bot' (13050); 'Apple iMessage' (13061); 'Apple Spotlight Search' (27753); 'Snapchat Ticketing' (13056); 'Amazon Alexa' (13063); ELSE 'Other Referrers'. |
 
 </details>
 
@@ -1931,7 +1931,7 @@ flowchart TB
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master (MSSQL tblAffiliate) | 11879 | Backend |  | [passthrough] Full reload (DELETE then COPY). |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Affiliate_id | integer | Affiliate on the transaction (tblTransaction) | 11879 | Backend |  | [passthrough] Window on create_dm. |
 | `public.fact_transaction` | 1 row / transaction_guid | affiliate_id | int | Affiliate id evaluated by the CASE | 11879 | Backend |  | [lookup] `public.dim_affiliate.affiliate_id` joined on `affiliate_key`. `affiliate_key` is set in `warehouse_loader.fact_transaction_base` where `dim_affiliate.affiliate_id = raw_import_cache.transaction.Affiliate_id`; NULL or unmatched IDs use the `affiliate_id = 0` (Unknown) row. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  | [conditional] iPhone (11879,12796); iPad (12093); Android Phone (11951,12003,12797); Android Tablet (12139,12202,12249); Flixster Android Phone (13039,13070); Flixster iPhone (13041,13069); Flixster iPad (13044,11747); Flixster Android Tablet (13045,13071); Other O&O Apps (11905,11950,12004,12007,12062,12200,13053,12966,12967); ELSE Non-App. The WAP-channel check is commented out. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | apps | varchar(256) | App bucket | Fandango App: iPhone | Derived |  | [conditional] First-match CASE on `dim_affiliate.affiliate_id`: 'Fandango App: iPhone' (11879, 12796); 'Fandango App: iPad' (12093); 'Fandango App: Android Phone' (11951, 12003, 12797); 'Fandango App: Android Tablet' (12139, 12202, 12249); 'Flixster App: Android Phone' (13039, 13070); 'Flixster App: iPhone' (13041, 13069); 'Flixster App: iPad' (13044, 11747); 'Flixster App: Android Tablet' (13045, 13071); 'Other O&O Apps' (11905, 11950, 12004, 12007, 12062, 12200, 13053, 12966, 12967); ELSE 'Non-App'. The `PurchaseChannel_cd = 'WAP'` condition is commented out, so channel is not checked. |
 
 </details>
 
@@ -1955,10 +1955,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | Channel_cd, Affiliate_id | varchar, integer | Purchase channel and affiliate (tblTransaction) | WAP / 11879 | Backend |  | [passthrough] Window on create_dm. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Channel_cd; Affiliate_id | varchar(40); integer | Purchase channel and affiliate (tblTransaction) | WAP; 11879 | Backend |  | [passthrough] Window on create_dm. |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | integer | Affiliate master | 11879 | Backend |  | [passthrough] Full reload. |
 | `public.fact_transaction` | 1 row / transaction_guid | channel_name; affiliate_id | varchar(40); int | Channel name and affiliate id evaluated by the CASE | WAP; 11879 | Backend |  | [lookup] `public.dim_channel.channel_name` joined on `channel_key` and `public.dim_affiliate.affiliate_id` joined on `affiliate_key`. `channel_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(dim_channel.channel_id)) = LOWER(TRIM(raw_import_cache.transaction.Channel_cd))`; unmatched codes use the `channel_id = ''` (Unknown) row. `affiliate_key` is set in `warehouse_loader.fact_transaction_base` where `dim_affiliate.affiliate_id = raw_import_cache.transaction.Affiliate_id`; NULL or unmatched IDs use the `affiliate_id = 0` (Unknown) row. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  | [conditional] In order: channel_name='Platform' → Platform; 13059/13050/13061/13056/13063 → named buckets; WAP + 24-id app list → Mobile Apps; WAP + NOT IN 22-id list, or WAP + NULL affiliate → Mobile Web; channel 'Web' → Web; ELSE Other. Case-sensitive; WAP + 12966/12967 → Other. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | platform | varchar(256) | Platform bucket | Mobile Apps | Derived |  | [conditional] First-match CASE (case-sensitive): `channel_name = 'Platform'` → 'Platform'; 13059 → 'Facebook Ticketing'; 13050 → 'Facebook Messenger Bot'; 13061 → 'Apple iMessage'; 13056 → 'Snapchat Ticketing'; 13063 → 'Amazon Alexa'; `channel_name = 'WAP'` and affiliate in the 24-id app list (12139, 12200, 12202, 11950, 12093, 11879, 12003, 12004, 12007, 11951, 12062, 12249, 11905, 12796, 12797, 13039, 13041, 13044, 13045, 13053, 13070, 13071, 11747, 13069) → 'Mobile Apps'; `channel_name = 'WAP'` and affiliate NOT IN the 22-id list (the app list without 13070, 13071, 11747, 13069, plus 12966, 12967) or NULL → 'Mobile Web'; `channel_name = 'Web'` → 'Web'; ELSE 'Other'. WAP + 12966/12967 therefore lands in 'Other'. |
 
 </details>
 
@@ -1967,28 +1967,34 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for item_qty</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, POS_TicketType_nm, Item_tp | integer, varchar, varchar | Quantity, ticket type, item type (tblTransaction_Item) | 2 / Adult / Ticket | Backend |  | [passthrough] Joined to tblTransaction, window on create_dm. |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, ticket_type_description, source_item_type | integer, varchar, varchar | Item quantity and type | 2 | Backend |  | [passthrough] Item_qy → item_count; POS_TicketType_nm → ticket_type_description; Item_tp → source_item_type. Inner join to fact_transaction_base. |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_count | integer | Non-donation, non-subscription item count | 2 | ETL |  | [aggregate] SUM(CASE WHEN ticket_type_description ILIKE '%subscription%' THEN 0 ELSE item_count END) over source_item_type <> 'Donation' lines; upsert. |
-| `public.fact_transaction` | 1 row / transaction_guid | item_count | integer | Item count | 2 | ETL |  | [lookup] ftia.item_count; the aggregate is joined only when transaction_type_id != 'Refund', so NULL on refunds. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | item_qty | integer | Item qty | 2 | Backend |  | [passthrough] ft.item_count AS item_qty. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; POS_TicketType_nm; Item_tp | integer; varchar; varchar(160) | Quantity, ticket type, item type (tblTransaction_Item) | 2; Adult; Ticket | Backend |  | [passthrough] Joined to tblTransaction, window on create_dm. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; ticket_type_description; source_item_type | integer; varchar; varchar(160) | Item quantity and type | 2 | Backend |  | [passthrough] Item_qy → item_count; POS_TicketType_nm → ticket_type_description; Item_tp → source_item_type. Inner join to fact_transaction_base. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_count | integer | Non-donation, non-subscription item count | 2 | Derived |  | [aggregate] SUM(CASE WHEN ticket_type_description ILIKE '%subscription%' THEN 0 ELSE item_count END) over source_item_type <> 'Donation' lines; upsert. |
+| `public.fact_transaction` | 1 row / transaction_guid | item_count | integer | Item count | 2 | Derived |  | [lookup] ftia.item_count; the aggregate is joined only when transaction_type_id != 'Refund', so NULL on refunds. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | item_qty | integer | Item qty | 2 | Derived |  | [passthrough] ft.item_count AS item_qty. |
 
 </details>
 
@@ -1997,37 +2003,43 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionPayment`"]
-  n1["`public.fact_payment`"]
-  n2["`warehouse_loader.fact_payment_aggregate`"]
-  n3["`raw_import_cache.transactionItem`"]
+  n1["`raw_import_cache.transactionItem`"]
+  n2["`raw_import_cache.transaction`"]
+  n3["`public.fact_payment`"]
   n4["`public.fact_transaction_item`"]
-  n5["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n6["`public.fact_transaction`"]
-  n7["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n3 --> n4
-  n4 --> n5
-  n2 --> n6
-  n5 --> n6
-  n6 --> n7
+  n5["`warehouse_loader.fact_transaction_base`"]
+  n6["`warehouse_loader.fact_payment_aggregate`"]
+  n7["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n8["`public.fact_transaction`"]
+  n9["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n4
+  n2 --> n5
+  n3 --> n6
+  n4 --> n7
+  n5 --> n8
+  n6 --> n8
+  n7 --> n8
+  n8 --> n9
 ```
 
-**Notes:** The payment aggregate uses `public.dim_payment_instrument` and `public.dim_payment_type` as side checks; these dimensions are not shown in the permanent flow. Temporary ETL tables excluded from the flow: `#fact_payment_aggregate` and `#transaction_item_aggregate`, built before the upserts into the two `warehouse_loader` aggregates.
+**Notes:** The payment aggregate uses `public.dim_payment_instrument` and `public.dim_payment_type` as side checks; these dimensions are not shown in the permanent flow. Temporary ETL tables excluded from the flow: `#fact_payment_aggregate` and `#transaction_item_aggregate`, built before the upserts into the two `warehouse_loader` aggregates. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for gross_transaction_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPayment` | 1 row / payment_guid | Transaction_at | numeric(10,4) | Payment amount (tblTransaction_Payment) | 42.50 | Backend |  | [passthrough] Window on create_dm. |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_at, Item_tp, Transaction_tp | numeric(10,4), varchar, varchar | Item amount and types | 1.00 / Donation / Refund | Backend |  | [passthrough] |
-| `public.fact_payment` | 1 row / payment_guid | transaction_amount | numeric | Payment amount | 42.50 | Backend |  | [passthrough] tp.Transaction_at. |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_amount, source_item_type, source_transaction_type | numeric(19,4), varchar, varchar | Item amount and types | 1.00 / Donation | Backend |  | [passthrough] |
-| `warehouse_loader.fact_payment_aggregate` | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Sum of payments | 42.50 | ETL |  | [aggregate] SUM(fp.transaction_amount), INNER JOIN dim_payment_instrument and dim_payment_type; upsert. |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | charity_amount | numeric(19,4) | Donation amount | 1.00 | ETL |  | [aggregate] SUM(item_amount) WHERE source_item_type='Donation'. |
+| `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | Transaction_at | numeric(10,4) | Payment amount (tblTransaction_Payment) | 42.50 | Backend |  | [passthrough] Window on create_dm. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_at; Item_tp; transaction_tp | numeric(10,4); varchar(160); varchar(160) | Item amount and types | 1.00; Donation; Refund | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_payment` | 1 row / transaction_guid + payment_guid | transaction_amount | numeric(19,4) | Payment amount | 42.50 | Backend |  | [passthrough] tp.Transaction_at. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_amount; source_item_type; source_transaction_type | numeric(19,4); varchar(160); varchar | Item amount and types | 1.00 / Donation | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_payment_aggregate` | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Sum of payments | 42.50 | Derived |  | [aggregate] SUM(fp.transaction_amount), INNER JOIN dim_payment_instrument and dim_payment_type; upsert. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | charity_amount | numeric(19,4) | Donation amount | 1.00 | Derived |  | [aggregate] SUM(item_amount) WHERE source_item_type='Donation'. |
 | `public.fact_transaction` | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross excluding donation | 41.50 | Derived |  | [derived] Purchases: fpa.gross - COALESCE(ftia.charity_amount,0). Refunds (ftia not joined): UPDATE to fpa.gross - COALESCE(fti.item_amount,0) for Donation items with source_transaction_type='Refund'. Refunds are negative. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 41.50 | Derived |  | [passthrough] |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross amount | 41.50 | Derived |  | [passthrough] Copies `gross_transaction_amount` from `public.fact_transaction`. |
 
 </details>
 
@@ -2036,28 +2048,34 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for sales_fee_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, SalesFee_at, ReservedFee_at, CardFee_at, Shipping_at, TotalAdmissions_qy | integer, numeric(10,4)… | Per-admission fees and quantities | 2 / 2.50 / 0 / 0 / 0 / 1 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, sales_fee_amount, reserved_fee_amount, card_fee_amount, shipping_fee_amount, admissions_count | integer, numeric(19,4)… | Item fee components | 2 / 2.50 | Backend |  | [passthrough] Renames the raw columns. |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_fees_amount | numeric(19,4) | Total item fees | 5.00 | ETL |  | [aggregate] SUM(item_count*admissions_count*(COALESCE(sales_fee,0)+COALESCE(reserved_fee,0)+COALESCE(card_fee,0)+COALESCE(shipping_fee,0))), Donation lines excluded. |
-| `public.fact_transaction` | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales + reserved + card + shipping fees | 5.00 | ETL |  | [lookup] ftia.item_fees_amount; NULL on Refund rows. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee | 5.00 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; SalesFee_at; ReservedFee_at; CardFee_at; Shipping_at; TotalAdmissions_qy | integer; numeric(10,4); numeric(10,4); numeric(10,4); numeric(10,4); integer | Per-admission fees and quantities | 2; 2.50; 0; 0; 0; 1 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; sales_fee_amount; reserved_fee_amount; card_fee_amount; shipping_fee_amount; admissions_count | integer; numeric(19,4); numeric(19,4); numeric(19,4); numeric(19,4); numeric(10,4) | Item fee components | 2 / 2.50 | Backend |  | [passthrough] Renames the raw columns. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_fees_amount | numeric(19,4) | Total item fees | 5.00 | Derived |  | [aggregate] SUM(item_count*admissions_count*(COALESCE(sales_fee,0)+COALESCE(reserved_fee,0)+COALESCE(card_fee,0)+COALESCE(shipping_fee,0))), Donation lines excluded. |
+| `public.fact_transaction` | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales + reserved + card + shipping fees | 5.00 | Derived |  | [lookup] ftia.item_fees_amount; NULL on Refund rows. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_amount | numeric(19,4) | Sales fee | 5.00 | Derived |  | [passthrough] Copies `sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
 
@@ -2066,28 +2084,34 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for waived_sales_fee_ticket_count</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, WaivedSalesFee_at, TotalAdmissions_qy | integer, numeric, integer | Qty, waived fee, admissions | 2 / 1.50 / 1 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, waived_sales_fee_amount, admissions_count | integer, numeric(19,4), integer | Item quantities and waived fee | 2 / 1.50 / 1 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | fee_waiver_item_count | integer | Admissions with fee waived | 2 | ETL |  | [aggregate/conditional] SUM(CASE WHEN waived_sales_fee_amount>0 THEN item_count*admissions_count ELSE 0 END), non-Donation. |
-| `public.fact_transaction` | 1 row / transaction_guid | waived_sales_fee_ticket_count | integer | Waived-fee ticket count | 2 | ETL |  | [lookup] NULL on refunds. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | waived_sales_fee_ticket_count | numeric(19,4) | Waived sales fee ticket count | 2 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; WaivedSalesFee_at; TotalAdmissions_qy | integer; numeric(10,4); integer | Qty, waived fee, admissions | 2; 1.50; 1 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; waived_sales_fee_amount; admissions_count | integer; numeric(19,4); numeric(10,4) | Item quantities and waived fee | 2; 1.50; 1 | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | fee_waiver_item_count | integer | Admissions with fee waived | 2 | Derived |  | [aggregate/conditional] SUM(CASE WHEN waived_sales_fee_amount>0 THEN item_count*admissions_count ELSE 0 END), non-Donation. |
+| `public.fact_transaction` | 1 row / transaction_guid | waived_sales_fee_ticket_count | integer | Waived-fee ticket count | 2 | Derived |  | [lookup] NULL on refunds. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | waived_sales_fee_ticket_count | numeric(19,4) | Waived sales fee ticket count | 2 | Derived |  | [passthrough] Copies `waived_sales_fee_ticket_count` from `public.fact_transaction`. |
 
 </details>
 
@@ -2096,27 +2120,36 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.refund`"]
-  n1["`public.fact_return`"]
-  n2["`warehouse_loader.fact_return_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
+  n1["`raw_import_cache.transactionCommitted`"]
+  n2["`raw_import_cache.transactionRolledBack`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_return`"]
+  n5["`warehouse_loader.fact_return_aggregate`"]
+  n6["`public.fact_transaction`"]
+  n7["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n3
   n2 --> n3
   n3 --> n4
+  n4 --> n5
+  n5 --> n6
+  n6 --> n7
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#fact_return_aggregate`, built from all successful `public.fact_return` rows before the upsert into `warehouse_loader.fact_return_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#fact_return_aggregate`, built from all successful `public.fact_return` rows before the upsert into `warehouse_loader.fact_return_aggregate`. `warehouse_loader.fact_transaction_base` supplies the refund's `is_successful` flag, which decides which returns are summed.
 
 <details>
 <summary>Lineage table for returned_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID, Price_at, Reason_cd | varchar, varchar, numeric(19,4), varchar | Refund line (tblRefund); Transaction_GUID = purchase | 42.50 | Backend |  | [passthrough] tblRefund joined to tblTransaction on t.Transaction_GUID = r.Refund_GUID; window on the refund's Create_dm. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_amount, is_successful | numeric(10,4), boolean | Returned ticket amount per refund | 42.50 | ETL |  | [aggregate] SUM(r.Price_at) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. is_successful comes from the refund's fact_transaction_base row. |
-| `warehouse_loader.fact_return_aggregate` | 1 row / purchase_transaction_guid | returned_ticket_amount | numeric(19,4) | Total returned per purchase | 42.50 | ETL |  | [aggregate] SUM(return_amount) over all fact_return WHERE is_successful; upsert. |
-| `public.fact_transaction` | 1 row / purchase transaction_guid | returned_amount | numeric(19,4) | Returned amount on the purchase row (positive) | 42.50 | Derived |  | [lookup] UPDATE from fra on transaction_guid = purchase_transaction_guid (no date filter). |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID; Price_at; Reason_cd | varchar; varchar; numeric(19,4); varchar | Refund line (tblRefund); Transaction_GUID = purchase | 42.50 | Backend |  | [passthrough] tblRefund joined to tblTransaction on t.Transaction_GUID = r.Refund_GUID; window on the refund's Create_dm. |
+| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | transaction_guid | char(37) | Transaction id |  | Backend |  | [passthrough] From MSSQL `tblTransactionCommitted`; the base load only tests whether a commit row joins. |
+| `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | transaction_guid | char(37) | Transaction id |  | Backend |  | [passthrough] From MSSQL `tblTransactionRolledBack`; the base load only tests whether a rollback row joins. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_successful | boolean | Refund transaction success flag | true | Derived |  | [conditional] `CASE WHEN tc.Transaction_GUID IS NOT NULL AND tr.Transaction_GUID IS NULL THEN TRUE ELSE FALSE END` on the refund's base row (as in 002). `public.fact_return.is_successful` copies it, and `warehouse_loader.fact_return_aggregate` sums only `fact_return` rows `WHERE is_successful`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_amount; is_successful | numeric(10,4); boolean | Returned ticket amount per refund | 42.50 | Derived |  | [aggregate] SUM(r.Price_at) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. is_successful comes from the refund's fact_transaction_base row. |
+| `warehouse_loader.fact_return_aggregate` | 1 row / transaction_guid | returned_ticket_amount | numeric(19,4) | Total returned per purchase (keyed by the purchase transaction_guid) | 42.50 | Derived |  | [aggregate] SUM(return_amount) over all fact_return WHERE is_successful; upsert. |
+| `public.fact_transaction` | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount on the purchase row (positive) | 42.50 | Derived |  | [lookup] UPDATE from fra on transaction_guid = purchase_transaction_guid (no date filter). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | returned_amount | numeric(19,4) | Returned amount | 42.50 | Derived |  | [passthrough/conditional] Inserted from ft. A post-insert UPDATE re-copies it for purchases with returns starting in [begin-72h, end) when the value differs. |
 
 </details>
@@ -2126,27 +2159,36 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.refund`"]
-  n1["`public.fact_return`"]
-  n2["`warehouse_loader.fact_return_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
+  n1["`raw_import_cache.transactionCommitted`"]
+  n2["`raw_import_cache.transactionRolledBack`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_return`"]
+  n5["`warehouse_loader.fact_return_aggregate`"]
+  n6["`public.fact_transaction`"]
+  n7["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n3
   n2 --> n3
   n3 --> n4
+  n4 --> n5
+  n5 --> n6
+  n6 --> n7
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#fact_return_aggregate`, built from all successful `public.fact_return` rows before the upsert into `warehouse_loader.fact_return_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#fact_return_aggregate`, built from all successful `public.fact_return` rows before the upsert into `warehouse_loader.fact_return_aggregate`. `warehouse_loader.fact_transaction_base` supplies the refund's `is_successful` flag, which decides which returns are summed.
 
 <details>
 <summary>Lineage table for returned_fee_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | Fee_at | numeric(19,4) | Refunded sales fee | 5.00 | Backend |  | [passthrough] |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_fee_amount | numeric(10,4) | Refunded fee | 5.00 | ETL |  | [aggregate] SUM(r.Fee_at) only (reserved, card and shipping fees go to other columns). |
-| `warehouse_loader.fact_return_aggregate` | 1 row / purchase_transaction_guid | returned_fee_amount | numeric(19,4) | Total refunded fee per purchase | 5.00 | ETL |  | [aggregate] SUM(return_fee_amount) WHERE is_successful. |
-| `public.fact_transaction` | 1 row / purchase transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee on purchase (positive) | 5.00 | Derived |  | [lookup] |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Fee_at | numeric(19,4) | Refunded sales fee | 5.00 | Backend |  | [passthrough] From MSSQL `tblRefund` joined to `tblTransaction` on `Refund_GUID`; window on the refund's create time. |
+| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | transaction_guid | char(37) | Transaction id |  | Backend |  | [passthrough] From MSSQL `tblTransactionCommitted`; the base load only tests whether a commit row joins. |
+| `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | transaction_guid | char(37) | Transaction id |  | Backend |  | [passthrough] From MSSQL `tblTransactionRolledBack`; the base load only tests whether a rollback row joins. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_successful | boolean | Refund transaction success flag | true | Derived |  | [conditional] `CASE WHEN tc.Transaction_GUID IS NOT NULL AND tr.Transaction_GUID IS NULL THEN TRUE ELSE FALSE END` on the refund's base row (as in 002). `public.fact_return.is_successful` copies it, and `warehouse_loader.fact_return_aggregate` sums only `fact_return` rows `WHERE is_successful`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_fee_amount | numeric(10,4) | Refunded fee | 5.00 | Derived |  | [aggregate] SUM(r.Fee_at) only (reserved, card and shipping fees go to other columns). |
+| `warehouse_loader.fact_return_aggregate` | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Total refunded fee per purchase (keyed by the purchase transaction_guid) | 5.00 | Derived |  | [aggregate] SUM(return_fee_amount) WHERE is_successful. |
+| `public.fact_transaction` | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee on purchase (positive) | 5.00 | Derived |  | [lookup] UPDATE on the purchase row from `warehouse_loader.fact_return_aggregate.returned_fee_amount`, matched on `purchase_transaction_guid` (no date filter). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | returned_fee_amount | numeric(19,4) | Returned fee amount | 5.00 | Derived |  | [passthrough/conditional] As 077. |
 
 </details>
@@ -2156,28 +2198,34 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for ticket_sales_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, Item_at, Item_tp | integer, numeric(10,4), varchar | Qty, unit price, item type | 2 / 17.50 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, item_amount, source_item_type | integer, numeric(19,4), varchar | Qty and unit price | 2 / 17.50 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales | 35.00 | ETL |  | [aggregate] SUM(item_count*item_amount), Donation lines excluded. |
-| `public.fact_transaction` | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales | 35.00 | ETL |  | [lookup] NULL on refunds. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; Item_at; Item_tp | integer; numeric(10,4); varchar(160) | Qty, unit price, item type | 2 / 17.50 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; item_amount; source_item_type | integer; numeric(19,4); varchar(160) | Qty and unit price | 2 / 17.50 | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales | 35.00 | Derived |  | [aggregate] SUM(item_count*item_amount), Donation lines excluded. |
+| `public.fact_transaction` | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales | 35.00 | Derived |  | [lookup] NULL on refunds. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 35.00 | Derived |  | [passthrough] Copies `ticket_sales_amount` from `public.fact_transaction`. |
 
 </details>
 
@@ -2186,28 +2234,34 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for waived_sales_fee_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, WaivedSalesFee_at, TotalAdmissions_qy | integer, numeric, integer | Per-admission amount | 1.50 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, waived_sales_fee_amount, admissions_count | integer, numeric(19,4), integer | Item amounts | 1.50 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_waived_sales_fee_amount | numeric(19,4) | Total | 3.00 | ETL |  | [aggregate] SUM(item_count*admissions_count*amount), non-Donation, no COALESCE. |
-| `public.fact_transaction` | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Total | 3.00 | ETL |  | [lookup] NULL on refunds. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Total | 3.00 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; WaivedSalesFee_at; TotalAdmissions_qy | integer; numeric(10,4); integer | Per-admission amount | 1.50 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; waived_sales_fee_amount; admissions_count | integer; numeric(19,4); numeric(10,4) | Item amounts | 1.50 | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_waived_sales_fee_amount | numeric(19,4) | Total | 3.00 | Derived |  | [aggregate] SUM(item_count*admissions_count*amount), non-Donation, no COALESCE. |
+| `public.fact_transaction` | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Total | 3.00 | Derived |  | [lookup] NULL on refunds. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | waived_sales_fee_amount | numeric(19,4) | Total | 3.00 | Derived |  | [passthrough] Copies `waived_sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
 
@@ -2216,28 +2270,34 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for surcharge_fee_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, SurchargeFee_at, TotalAdmissions_qy | integer, numeric, integer | Per-admission amount | 1.50 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, surcharge_fee_amount, admissions_count | integer, numeric(19,4), integer | Item amounts | 1.50 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_surcharge_fee_amount | numeric(19,4) | Total | 3.00 | ETL |  | [aggregate] SUM(item_count*admissions_count*amount), non-Donation, no COALESCE. |
-| `public.fact_transaction` | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Total | 3.00 | ETL |  | [lookup] NULL on refunds. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Total | 3.00 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; SurchargeFee_at; TotalAdmissions_qy | integer; numeric(10,4); integer | Per-admission amount | 1.50 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; surcharge_fee_amount; admissions_count | integer; numeric(19,4); numeric(10,4) | Item amounts | 1.50 | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_surcharge_fee_amount | numeric(19,4) | Total | 3.00 | Derived |  | [aggregate] SUM(item_count*admissions_count*amount), non-Donation, no COALESCE. |
+| `public.fact_transaction` | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Total | 3.00 | Derived |  | [lookup] NULL on refunds. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | surcharge_fee_amount | numeric(19,4) | Total | 3.00 | Derived |  | [passthrough] Copies `surcharge_fee_amount` from `public.fact_transaction`. |
 
 </details>
 
@@ -2261,9 +2321,9 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | Fee_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_fee_amount | numeric(10,4) | Refunded component per refund | 5.00 | ETL |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | sales_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Fee_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_fee_amount | numeric(10,4) | Refunded component per refund | 5.00 | Derived |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
+| `public.fact_transaction` | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_return_amount | numeric(19,4) | Return amount | -5.00 | Derived |  | [passthrough] Copies `fact_transaction.sales_fee_return_amount`. |
 
 </details>
@@ -2288,9 +2348,9 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | Surcharge_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_surcharge_amount | numeric(10,4) | Refunded component per refund | 5.00 | ETL |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Surcharge_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_surcharge_amount | numeric(10,4) | Refunded component per refund | 5.00 | Derived |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
+| `public.fact_transaction` | 1 row / transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | surcharge_fee_return_amount | numeric(19,4) | Return amount | -5.00 | Derived |  | [passthrough] Copies `fact_transaction.surcharge_fee_return_amount`. |
 
 </details>
@@ -2315,9 +2375,9 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | ReservedFee_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_reservation_fee_amount | numeric(10,4) | Refunded component per refund | 5.00 | ETL |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | reservation_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | ReservedFee_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_reservation_fee_amount | numeric(10,4) | Refunded component per refund | 5.00 | Derived |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
+| `public.fact_transaction` | 1 row / transaction_guid | reservation_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | reservation_fee_return_amount | numeric(19,4) | Return amount | -5.00 | Derived |  | [passthrough] Copies `fact_transaction.reservation_fee_return_amount`. |
 
 </details>
@@ -2342,9 +2402,9 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | Tax_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_tax_amount | numeric(10,4) | Refunded component per refund | 5.00 | ETL |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | tax_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Tax_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_tax_amount | numeric(10,4) | Refunded component per refund | 5.00 | Derived |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
+| `public.fact_transaction` | 1 row / transaction_guid | tax_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | tax_return_amount | numeric(19,4) | Return amount | -5.00 | Derived |  | [passthrough] Copies `fact_transaction.tax_return_amount`. |
 
 </details>
@@ -2369,9 +2429,9 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.refund` | 1 row / refund line | CardFee_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + return_start_datetime + reason | return_card_fee_amount | numeric(10,4) | Refunded component per refund | 5.00 | ETL |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | card_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | CardFee_at | numeric(19,4) | Refunded component | 5.00 | Backend |  | [passthrough] tblRefund. Only the one mapped column feeds the field. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_card_fee_amount | numeric(10,4) | Refunded component per refund | 5.00 | Derived |  | [aggregate] SUM(raw col) grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
+| `public.fact_transaction` | 1 row / transaction_guid | card_fee_return_amount | numeric(19,4) | Return amount on the refund row (negative) | -5.00 | Derived |  | [derived] #fact_return_lookup (return_start_datetime in window), then UPDATE `= -frl.<col>` WHERE transaction_guid = return_transaction_guid. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | card_fee_return_amount | numeric(19,4) | Return amount | -5.00 | Derived |  | [passthrough] Copies `fact_transaction.card_fee_return_amount`. |
 
 </details>
@@ -2381,16 +2441,16 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`raw_import_cache.refund`"]
-  n4["`public.fact_return`"]
+  n1["`raw_import_cache.refund`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`public.fact_return`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
   n5["`public.fact_transaction`"]
   n6["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n5
-  n3 --> n4
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
   n4 --> n5
   n5 --> n6
 ```
@@ -2402,13 +2462,13 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy, SalesFee_at, ReservedFee_at, CardFee_at, Shipping_at, TotalAdmissions_qy | integer, numeric… | Purchase item fees | 2.50 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count, sales_fee_amount, reserved_fee_amount, card_fee_amount, shipping_fee_amount, admissions_count | integer, numeric(19,4)… | Purchase item fees | 2.50 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid (purchase) | item_fees_amount | numeric(19,4) | Purchase total fees | 5.00 | ETL |  | [aggregate] As 075. |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund→purchase mapping | — | Backend |  | [lookup] Supplies the refund-to-purchase mapping only. |
-| `public.fact_return` | 1 row / refund guid + purchase guid + … | return_transaction_guid, purchase_transaction_guid | varchar | Refund→purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Original purchase's fees, on the refund row (positive) | 5.00 | Derived |  | [lookup] #fact_return_lookup joined to ftia on purchase_transaction_guid; UPDATE refund row = ftia.item_fees_amount. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee amount for returned purchase | 5.00 | Derived |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy; SalesFee_at; ReservedFee_at; CardFee_at; Shipping_at; TotalAdmissions_qy | integer; numeric(10,4); numeric(10,4); numeric(10,4); numeric(10,4); integer | Purchase item fees | 2.50 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund→purchase mapping | — | Backend |  | [lookup] Supplies the refund-to-purchase mapping only. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count; sales_fee_amount; reserved_fee_amount; card_fee_amount; shipping_fee_amount; admissions_count | integer; numeric(19,4); numeric(19,4); numeric(19,4); numeric(19,4); numeric(10,4) | Purchase item fees | 2.50 | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund→purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_fees_amount | numeric(19,4) | Purchase total fees | 5.00 | Derived |  | [aggregate] As 075. |
+| `public.fact_transaction` | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Original purchase's fees, on the refund row (positive) | 5.00 | Derived |  | [lookup] #fact_return_lookup joined to ftia on purchase_transaction_guid; UPDATE refund row = ftia.item_fees_amount. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_amount_for_returned_purchase | numeric(19,4) | Sales fee amount for returned purchase | 5.00 | Derived |  | [passthrough] Copies `sales_fee_amount_for_returned_purchase` from `public.fact_transaction`. |
 
 </details>
 
@@ -2432,8 +2492,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | Property_nm | varchar | Property on the transaction | Fandango | Backend |  | [passthrough] |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund→parent purchase mapping | — | Backend |  | [lookup] Supplies the refund-to-purchase mapping only. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Property_nm | varchar(60) | Property on the transaction | Fandango | Backend |  | [passthrough] From MSSQL `tblTransaction`. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund→parent purchase mapping | — | Backend |  | [lookup] Supplies the refund-to-purchase mapping only. |
 | `public.fact_transaction` | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup/conditional] `public.dim_property.property_id` joined on `property_key`. The dimension inserts `TRIM(Property_nm)` with `Fandango` mapped to `Fandango USA`. `property_key` is set in `warehouse_loader.fact_transaction_base`: a refund with blank `Property_nm` uses its parent purchase's `Property_nm` (through `raw_import_cache.refund`), `Fandango` is mapped to `Fandango USA`, and unmatched values use the `property_id = ''` row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | property_id | varchar(60) | Property id | Fandango USA | Backend |  | [lookup] dim_property.property_id. |
 
@@ -2477,7 +2537,7 @@ flowchart TB
   n1 --> n2
 ```
 
-**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null merchant ID from the theater's `raw_import_cache.theater` history to every theater version (a change also creates a new version), so the value is not point-in-time. Value column: `public.dim_theater.braintree_merchant_id`.
+**Notes:** `public.dim_theater` joins `public.fact_transaction`. The type-1 update writes the latest non-null merchant ID from the theater's `raw_import_cache.theater` history to every theater version (a change also creates a new version), so the value is not point-in-time. Value column: `public.dim_theater.braintree_merchant_id`. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for braintree_merchant_id</summary>
@@ -2495,34 +2555,40 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`raw_import_cache.refund`"]
+  n1["`raw_import_cache.refund`"]
+  n2["`raw_import_cache.transaction`"]
+  n3["`public.fact_transaction_item`"]
   n4["`public.fact_return`"]
-  n5["`public.fact_transaction`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
+  n5["`warehouse_loader.fact_transaction_base`"]
+  n6["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n7["`public.fact_transaction`"]
+  n8["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n4
   n2 --> n5
-  n3 --> n4
-  n4 --> n5
-  n5 --> n6
+  n3 --> n6
+  n4 --> n7
+  n5 --> n7
+  n6 --> n7
+  n7 --> n8
 ```
 
-**Notes:** Purchase rows take the item-aggregate value. Refund rows are then updated with the negated `public.fact_return.taxable_sales_fee_amount` through temporary `#fact_return_lookup` (return_start_datetime in the batch window). Temporary ETL tables excluded from the flow: `#fact_return_lookup`, `#transaction_item_aggregate`.
+**Notes:** Purchase rows take the item-aggregate value. Refund rows are then updated with the negated `public.fact_return.taxable_sales_fee_amount` through temporary `#fact_return_lookup` (return_start_datetime in the batch window). Temporary ETL tables excluded from the flow: `#fact_return_lookup`, `#transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for taxable_sales_fee_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | taxable_at | numeric(10,4) | Taxable sales fee | 2.50 | Backend |  | [passthrough] |
-| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | taxable_sales_fee_amount | numeric(10,4) | Taxable sales fee | 2.50 | Backend |  | [passthrough] |
-| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_taxable_sales_fee_amount | numeric(10,4) | Taxable fee total | 2.50 | ETL |  | [aggregate] SUM(taxable_sales_fee_amount), not multiplied by item_count; non-Donation. |
-| `raw_import_cache.refund` | 1 row / refund line | taxable_at | numeric(19,4) | Refunded taxable fee | 2.50 | Backend |  | [passthrough] |
-| `public.fact_return` | 1 row / refund guid + purchase guid + … | taxable_sales_fee_amount | numeric(10,4) | Refunded taxable fee | 2.50 | ETL |  | [aggregate] SUM(r.taxable_at). |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | taxable_at | numeric(10,4) | Taxable sales fee | 2.50 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | taxable_at | numeric(19,4) | Refunded taxable fee | 2.50 | Backend |  | [passthrough] From MSSQL `tblRefund` joined to `tblTransaction` on `Refund_GUID`; window on the refund's create time. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
+| `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | taxable_sales_fee_amount | numeric(10,4) | Taxable sales fee | 2.50 | Backend |  | [passthrough] Copies the `raw_import_cache.transactionItem` values under renamed columns; inner join to `warehouse_loader.fact_transaction_base`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | taxable_sales_fee_amount | numeric(10,4) | Refunded taxable fee | 2.50 | Derived |  | [aggregate] SUM(r.taxable_at). |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
+| `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_taxable_sales_fee_amount | numeric(10,4) | Taxable fee total | 2.50 | Derived |  | [aggregate] SUM(taxable_sales_fee_amount), not multiplied by item_count; non-Donation. |
 | `public.fact_transaction` | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(10,4) | Taxable fee (purchase +, refund −) | 2.50 / -2.50 | Derived |  | [lookup/derived] Purchases: ftia.item_taxable_sales_fee_amount. Refunds: UPDATE = -frl.return_taxable_sales_fee_amount. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 2.50 | Derived |  | [passthrough] |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | taxable_sales_fee_amount | numeric(19,4) | Taxable sales fee amount | 2.50 | Derived |  | [passthrough] Copies `taxable_sales_fee_amount` from `public.fact_transaction`. |
 
 </details>
 
@@ -2532,16 +2598,20 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_transaction`"]
-  n3["`public.fact_sales_fee_tax`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
+  n2["`raw_import_cache.transaction`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n5
+  n1 --> n5
   n2 --> n3
   n3 --> n4
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow.
+**Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for sales_fee_tax_amount</summary>
@@ -2550,7 +2620,9 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on purchases | 0.35 | Third-party/Derived |  | [conditional] lineitem_number=1, latest load_date, INNER JOIN fact_transaction; = total_lineitem_tax when type NOT IN (Refund, Exchange), else NULL. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
 
@@ -2562,20 +2634,26 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_transaction`"]
-  n3["`public.fact_sales_fee_tax (refund row)`"]
-  n4["`public.fact_return`"]
-  n5["`public.fact_sales_fee_tax (purchase row)`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
-  n2 --> n3
-  n3 --> n4
+  n2["`raw_import_cache.transaction`"]
+  n3["`raw_import_cache.refund`"]
+  n4["`warehouse_loader.fact_transaction_base`"]
+  n5["`public.fact_transaction`"]
+  n6["`public.fact_sales_fee_tax (refund row)`"]
+  n7["`public.fact_return`"]
+  n8["`public.fact_sales_fee_tax (purchase row)`"]
+  n9["`analytics.transactions_data_source`"]
+  n0 --> n6
+  n1 --> n6
+  n2 --> n4
+  n3 --> n7
   n4 --> n5
   n5 --> n6
+  n6 --> n7
+  n7 --> n8
+  n8 --> n9
 ```
 
-**Notes:** This is a purchase-row rollup through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession purchases). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update.
+**Notes:** This is a purchase-row rollup through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession purchases). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for returned_sales_fee_tax_amount</summary>
@@ -2584,10 +2662,13 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
-| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on Refund/Exchange rows (see 094); this refund-side value is rolled up to the purchase row. |
-| `public.fact_return` | refund/purchase pair | return_transaction_guid, purchase_transaction_guid | varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
-| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax returned against the purchase (positive) | 0.35 | Derived |  | [aggregate] -SUM(NVL(refunds' sales_fee_tax_return_amount,0)), NULL if none; purchase rows in the lag window. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on Refund/Exchange rows (see 094); this refund-side value is rolled up to the purchase row. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax returned against the purchase (positive) | 0.35 | Derived |  | [aggregate] -SUM(NVL(refunds' sales_fee_tax_return_amount,0)), NULL if none; purchase rows in the lag window. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Returned sales fee tax amount | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
 
 </details>
@@ -2598,16 +2679,20 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_transaction`"]
-  n3["`public.fact_sales_fee_tax`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
+  n2["`raw_import_cache.transaction`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n5
+  n1 --> n5
   n2 --> n3
   n3 --> n4
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow.
+**Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for sales_fee_tax_return_amount</summary>
@@ -2616,7 +2701,9 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] = total_lineitem_tax when type IN (Refund, Exchange). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
 
@@ -2628,20 +2715,26 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_transaction`"]
-  n3["`public.fact_sales_fee_tax (purchase row)`"]
-  n4["`public.fact_return`"]
-  n5["`public.fact_sales_fee_tax (refund row)`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
-  n2 --> n3
-  n3 --> n4
+  n2["`raw_import_cache.transaction`"]
+  n3["`raw_import_cache.refund`"]
+  n4["`warehouse_loader.fact_transaction_base`"]
+  n5["`public.fact_transaction`"]
+  n6["`public.fact_sales_fee_tax (purchase row)`"]
+  n7["`public.fact_return`"]
+  n8["`public.fact_sales_fee_tax (refund row)`"]
+  n9["`analytics.transactions_data_source`"]
+  n0 --> n6
+  n1 --> n6
+  n2 --> n4
+  n3 --> n7
   n4 --> n5
   n5 --> n6
+  n6 --> n7
+  n7 --> n8
+  n8 --> n9
 ```
 
-**Notes:** This refund field copies the original purchase's sales-fee tax through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession refunds). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update.
+**Notes:** This refund field copies the original purchase's sales-fee tax through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession refunds). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for sales_fee_tax_amount_for_returned_purchase</summary>
@@ -2650,10 +2743,13 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
 | `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
-| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on the original purchase | 0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on non-Refund/Exchange rows (see 092); copied to the refund through `public.fact_return`. |
-| `public.fact_return` | refund/purchase pair | return_transaction_guid, purchase_transaction_guid | varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
-| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's sales-fee tax, on the refund row | 0.35 | Derived |  | [lookup] = purchase FST.sales_fee_tax_amount via fact_return; lag window. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id | varchar(36); varchar(40) | Transaction matched to the Vertex document; its transaction type | —; POSS-Vista Ticket Purchase | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged); `public.dim_transaction_type.transaction_type_id`, joined on the matched row's `transaction_type_key`, decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on the original purchase | 0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on non-Refund/Exchange rows (see 092); copied to the refund through `public.fact_return`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's sales-fee tax, on the refund row | 0.35 | Derived |  | [lookup] = purchase FST.sales_fee_tax_amount via fact_return; lag window. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
 
 </details>
@@ -2679,21 +2775,21 @@ flowchart TB
   n6 --> n7
 ```
 
-**Notes:** `public.dim_theater.pdi_id` is checked by the `is_test` calculation in `warehouse_loader.fact_transaction_base`. The field also uses transaction and customer test indicators and the test-email lists. The dimension is consulted within the base calculation and is omitted from the flow and table.
+**Notes:** `public.dim_theater.pdi_id` is checked by the `is_test` calculation in `warehouse_loader.fact_transaction_base`. The field also uses transaction and customer test indicators and the test-email lists. `public.dim_transaction_type.transaction_type_id` (reached through the base row's `transaction_type_key`, from `raw_import_cache.transaction.Transaction_tp`) is also checked for `'Fandango Test Ticket Purchase'`. Both dimensions are consulted within the base calculation and are omitted from the flow and table. Temporary ETL tables used to build `public.dim_theater`, excluded from the flow: `#temp_theater_raw_ranked_records`, `#temp_new_records_on_type2_columns`, `#temp_latest_updates_on_type1_columns`, `#temp_theater_type1totype2` and `#temp_purchase_channel_status`.
 
 <details>
 <summary>Lineage table for is_test</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transaction` | 1 row / transaction_guid | Test_bt, Transaction_tp | boolean, varchar | Source test flag; transaction type | false / Fandango Test Ticket Purchase | Backend |  | [passthrough] |
-| `raw_import_cache.transactionCustomer` | 1 row / transaction_guid | Email_nm | varchar | Customer email | user@example.com | Backend |  | [passthrough] |
-| `raw_import_cache.testEmailAddress` | 1 row / email | email_address, activation_datetime, expiration_datetime | varchar(320), timestamp, timestamp | Test email allowlist | tester@example.com | Backend |  | [passthrough] Load source not in this repo. |
-| `raw_import_cache.testTransactionEmailList` | 1 row / TestTransactionEmailList_id | Email_tx, Active_bt, Pattern_bt | varchar(100), boolean, boolean | Test email list / regex patterns | qa(.+)@fandango.com | Backend |  | [passthrough] Full reload of tblTestTransactionEmailList. |
-| `raw_import_cache.theater` | 1 row / theater version | Pdiid | varchar(12) | Theater PDI id | AVSTA | Backend |  | [lookup] Used to identify test theaters through the theater dimension. |
-| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_test | boolean | Test transaction flag | false | Derived |  | [conditional] TRUE if test_bt; or dt.pdi_id IN ('AVSTA','FVSTA','TVSTA'); or email ILIKE 'loadtester_%@fandango.com' / 'qadotcom_%@gmail.com'; or email in testEmailAddress (activation ≤ begin_date, expiration ≥ end_date); or email in the active non-pattern list; or email LIKE an active pattern (`(.+)`→`%`); or transaction_type_id = 'Fandango Test Ticket Purchase'. Else FALSE. |
-| `public.fact_transaction` | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Test_bt; Transaction_tp | boolean; varchar(40) | Source test flag; transaction type | false; Fandango Test Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`. |
+| `raw_import_cache.transactionCustomer` | 1 row / transaction_guid | Email_nm | varchar | Customer email | user@example.com | Backend |  | [passthrough] From MSSQL `tblTransaction` customer columns; the base load joins it only when its `Create_dm` is in [begin, end] or NULL. |
+| `raw_import_cache.testEmailAddress` | 1 row / email_address | email_address; activation_datetime; expiration_datetime | varchar(320); timestamp; timestamp | Test email allowlist | tester@example.com | Backend |  | [passthrough] Load source not in this repo. |
+| `raw_import_cache.testTransactionEmailList` | 1 row / TestTransactionEmailList_id | Email_tx; Active_bt; Pattern_bt | varchar(100); boolean; boolean | Test email list / regex patterns | qa(.+)@fandango.com | Backend |  | [passthrough] Full reload of tblTestTransactionEmailList. |
+| `raw_import_cache.theater` | 1 row / Theater_pkey per update | Pdiid | varchar(12) | Theater PDI id | AVSTA | Backend |  | [lookup] Used to identify test theaters through the theater dimension. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_test | boolean | Test transaction flag | false | Derived |  | [conditional] TRUE if test_bt; or dt.pdi_id IN ('AVSTA','FVSTA','TVSTA'); or email ILIKE 'loadtester_%@fandango.com' / 'qadotcom_%@gmail.com'; or (customer row joined when its `Create_dm` is in [begin, end] or NULL) email in testEmailAddress (activation ≤ begin_date, expiration ≥ end_date); or email in the active non-pattern list; or email LIKE an active pattern (`(.+)`→`%`); or transaction_type_id = 'Fandango Test Ticket Purchase'. Else FALSE. |
+| `public.fact_transaction` | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] Copies `is_test` from `warehouse_loader.fact_transaction_base`. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | is_test | boolean | Test flag | false | Derived |  | [passthrough] Copies `is_test` from `public.fact_transaction`. |
 
 </details>
 
@@ -2740,8 +2836,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Attribute_nm | varchar(255) | Attribute key | FanClubStatus | Backend |  | [lookup] Filter `attribute_nm = 'FanClubStatus'` (case-sensitive), attribute `Create_dm` in [begin-10min, end+10min). |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | Fan club status | Active | Backend |  | [passthrough] Supplies the status value. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key | FanClubStatus | Backend |  | [lookup] Filter `attribute_nm = 'FanClubStatus'` (case-sensitive), attribute `Create_dm` in [begin-10min, end+10min). |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Fan club status | Active | Backend |  | [passthrough] Supplies the status value. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_fanclub | boolean | Fanclub transaction flag | true | Derived |  | [conditional] `CASE WHEN ta.value_tx IN ('Active','Trial','OverdueTrial','Overdue') THEN TRUE ELSE FALSE`. Missing attribute → FALSE. |
 | `public.fact_transaction` | 1 row / transaction_guid | is_fanclub | boolean | Whether the transaction is associated with fanclub | true | Derived |  | [passthrough] Copies `is_fanclub` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | is_fanclub | boolean | Fanclub flag | true | Derived |  | [passthrough] Copies `ft.is_fanclub`. |
@@ -2753,17 +2849,21 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for waived_fanclub_fee_amount</summary>
@@ -2772,10 +2872,12 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy | integer | Item quantity | 2 | Backend |  | [passthrough] From `tblTransaction_Item.Item_qy`. |
 | `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | ReservedFee_at | numeric(10,4) | Reserved (fan club waived) fee per admission | 1.50 | Backend |  | [passthrough] From `tblTransaction_Item.ReservedFee_at`. |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | totaladmissions_qy | integer | Admissions per item | 1 | Backend |  | [passthrough] From `tblTransaction_Item.TotalAdmissions_qy`. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | TotalAdmissions_qy | integer | Admissions per item | 1 | Backend |  | [passthrough] From `tblTransaction_Item.TotalAdmissions_qy`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count | integer | Item quantity | 2 | Backend |  | [passthrough] `ti.Item_qy AS item_count`. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | reserved_fee_amount | numeric(19,4) | Reserved fee per admission | 1.50 | Backend |  | [passthrough] `ti.ReservedFee_at AS reserved_fee_amount`. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | admissions_count | numeric(10,4) | Admissions per item | 1 | Backend |  | [passthrough] `ti.totaladmissions_qy AS admissions_count`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
 | `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | fanclub_waived_sales_fee_amount | numeric(19,4) | Fanclub waived fee amount | 3.00 | Derived |  | [aggregate] `SUM(item_count * admissions_count * COALESCE(reserved_fee_amount,0))` over items with `source_item_type <> 'Donation'`, by transaction_guid. |
 | `public.fact_transaction` | 1 row / transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Fanclub waived fee amount | 3.00 | Derived |  | [lookup] `ftia.fanclub_waived_sales_fee_amount`. The FTIA join applies only when `transaction_type_id != 'Refund'`, so refund rows are NULL. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | waived_fanclub_fee_amount | numeric(19,4) | Waived fanclub fee amount | 3.00 | Derived |  | [passthrough] Copies `ft.waived_fanclub_fee_amount`. |
@@ -2787,17 +2889,21 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for waived_fanclub_fee_ticket_count</summary>
@@ -2806,10 +2912,12 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy | integer | Item quantity | 2 | Backend |  | [passthrough] From `tblTransaction_Item.Item_qy`. |
 | `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | ReservedFee_at | numeric(10,4) | Reserved fee per admission | 1.50 | Backend |  | [passthrough] From `tblTransaction_Item.ReservedFee_at`. |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | totaladmissions_qy | integer | Admissions per item | 1 | Backend |  | [passthrough] From `tblTransaction_Item.TotalAdmissions_qy`. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | TotalAdmissions_qy | integer | Admissions per item | 1 | Backend |  | [passthrough] From `tblTransaction_Item.TotalAdmissions_qy`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count | integer | Item quantity | 2 | Backend |  | [passthrough] `ti.Item_qy`. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | reserved_fee_amount | numeric(19,4) | Reserved fee per admission | 1.50 | Backend |  | [passthrough] `ti.ReservedFee_at`. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | admissions_count | numeric(10,4) | Admissions per item | 1 | Backend |  | [passthrough] `ti.totaladmissions_qy`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
 | `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | fanclub_fee_waiver_item_count | integer | Fanclub waived-fee admissions | 2 | Derived |  | [aggregate/conditional] `SUM(CASE WHEN reserved_fee_amount > 0 THEN item_count * admissions_count ELSE 0 END)`, non-Donation items. Counts admissions (tickets), not line items. |
 | `public.fact_transaction` | 1 row / transaction_guid | waived_fanclub_fee_ticket_count | integer | Fanclub waived-fee ticket count | 2 | Derived |  | [lookup] `ftia.fanclub_fee_waiver_item_count`. NULL on Refund rows (FTIA not joined). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | waived_fanclub_fee_ticket_count | integer | Waived fanclub fee ticket count | 2 | Derived |  | [passthrough] Copies `ft.waived_fanclub_fee_ticket_count`. |
@@ -2821,17 +2929,21 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
-  n3 --> n4
+  n1["`raw_import_cache.transaction`"]
+  n2["`public.fact_transaction_item`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n3
+  n2 --> n4
+  n3 --> n5
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#transaction_item_aggregate`, which builds the item totals before the upsert into `warehouse_loader.fact_transaction_item_aggregate`. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL).
 
 <details>
 <summary>Lineage table for charity_amount</summary>
@@ -2840,8 +2952,10 @@ flowchart TB
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_at | numeric(10,4) | Item amount | 1.00 | Backend |  | [passthrough] From `tblTransaction_Item.Item_at`. |
 | `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_tp | varchar(160) | Item type code | Donation | Backend |  | [passthrough] From `tblTransaction_Item.Item_tp`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_amount | numeric(19,4) | Item amount | 1.00 | Backend |  | [passthrough] `ti.Item_at AS item_amount`. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | source_item_type | varchar(160) | Raw item type | Donation | Backend |  | [passthrough] `ti.item_tp AS source_item_type`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
 | `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | charity_amount | numeric(19,4) | Donation amount | 1.00 | Derived |  | [aggregate] `SUM(item_amount)` where `source_item_type = 'Donation'`, by transaction_guid. No item_count multiplier. |
 | `public.fact_transaction` | 1 row / transaction_guid | charity_amount | numeric(19,4) | Charity donation amount | 1.00 | Derived |  | [lookup] `ftia.charity_amount`. NULL on Refund rows. The same value is subtracted from `gross_transaction_amount` (FT L123). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | charity_amount | numeric(19,4) | Charity amount | 1.00 | Derived |  | [passthrough] Copies `ft.charity_amount`. |
@@ -2863,15 +2977,15 @@ flowchart TB
   n3 --> n4
 ```
 
-**Notes:** The payment aggregate uses `public.dim_payment_instrument` and `public.dim_payment_type` as side checks; these dimensions are not shown in the permanent flow. Temporary ETL tables excluded from the flow: `#fact_payment_aggregate`, built before the upsert into `warehouse_loader.fact_payment_aggregate`.
+**Notes:** The payment aggregate uses `public.dim_payment_instrument` and `public.dim_payment_type` as side checks; these dimensions are not shown in the permanent flow. Temporary ETL tables excluded from the flow: `#fact_payment_aggregate`, built before the upsert into `warehouse_loader.fact_payment_aggregate`. `public.fact_payment` loads only payments whose transaction is in `warehouse_loader.fact_transaction_base` (so Subscription Purchase rows are excluded); the base table filters rows and is not shown in the flow.
 
 <details>
 <summary>Lineage table for true_gross_transaction_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPayment` | 1 row / payment_guid | Transaction_at | numeric(10,4) | Payment amount | 43.50 | Backend |  | [passthrough] From `tblTransaction_Payment.Transaction_at`. |
-| `public.fact_payment` | 1 row / payment_guid | transaction_amount | numeric(19,4) | Payment amount | 43.50 | Backend |  | [passthrough] `tp.Transaction_at AS transaction_amount`, for payments joined to `fact_transaction_base` in the batch window. |
+| `raw_import_cache.transactionPayment` | 1 row / transaction_guid + payment_guid | Transaction_at | numeric(10,4) | Payment amount | 43.50 | Backend |  | [passthrough] From `tblTransaction_Payment.Transaction_at`. |
+| `public.fact_payment` | 1 row / transaction_guid + payment_guid | transaction_amount | numeric(19,4) | Payment amount | 43.50 | Backend |  | [passthrough] `tp.Transaction_at AS transaction_amount`, for payments joined to `fact_transaction_base` in the batch window. |
 | `warehouse_loader.fact_payment_aggregate` | 1 row / transaction_guid | gross_transaction_amount | numeric(19,4) | Gross payment amount | 43.50 | Derived |  | [aggregate] `SUM(transaction_amount)` by transaction_guid, after INNER JOIN `dim_payment_instrument` → `dim_payment_type` (`original_payment_type_key`). Payments without a matching instrument or type are dropped. |
 | `public.fact_transaction` | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross payment total, including charity | 43.50 | Derived |  | [lookup] `fpa.gross_transaction_amount`. No charity deduction, unlike `gross_transaction_amount` (L123). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | true_gross_transaction_amount | numeric(19,4) | Gross including charity | 43.50 | Derived |  | [passthrough] Copies `ft.true_gross_transaction_amount`. |
@@ -2883,17 +2997,23 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.refund`"]
-  n1["`public.fact_return`"]
-  n2["`warehouse_loader.fact_return_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
+  n1["`raw_import_cache.transactionCommitted`"]
+  n2["`raw_import_cache.transactionRolledBack`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_return`"]
+  n5["`warehouse_loader.fact_return_aggregate`"]
+  n6["`public.fact_transaction`"]
+  n7["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n3
   n2 --> n3
   n3 --> n4
+  n4 --> n5
+  n5 --> n6
+  n6 --> n7
 ```
 
-**Notes:** Temporary ETL tables excluded from the flow: `#fact_return_aggregate`, built from all successful `public.fact_return` rows before the upsert into `warehouse_loader.fact_return_aggregate`.
+**Notes:** Temporary ETL tables excluded from the flow: `#fact_return_aggregate`, built from all successful `public.fact_return` rows before the upsert into `warehouse_loader.fact_return_aggregate`. `warehouse_loader.fact_transaction_base` supplies the refund's `is_successful` flag, which decides which returns are summed.
 
 <details>
 <summary>Lineage table for returned_charity_amount</summary>
@@ -2901,10 +3021,13 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | donation_at | numeric(19,4) | Refunded donation amount | 1.00 | Backend |  | [passthrough] From `tblRefund.Donation_at` (tblRefund ⨝ tblTransaction on Refund_GUID). |
-| `public.fact_return` | 1 row / return guid + purchase guid + return_start_datetime + reason code | return_charity_amount | numeric(19,4) | Refunded charity per return | 1.00 | Derived |  | [aggregate] `SUM(r.donation_at)` grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
-| `warehouse_loader.fact_return_aggregate` | 1 row / purchase_transaction_guid | returned_charity_amount | numeric(19,4) | Total refunded charity per purchase | 1.00 | Derived |  | [aggregate] `SUM(return_charity_amount)` over `fact_return WHERE is_successful`, by purchase_transaction_guid. Not negated. |
-| `public.fact_transaction` | 1 row / purchase transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity on the purchase row | 1.00 | Derived |  | [lookup] UPDATE purchase row `= fra.returned_charity_amount` (positive). |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | 1.00 | Derived |  | [passthrough] INSERT `ft.returned_charity_amount`. A second UPDATE refreshes it for purchases with returns in the window whose purchase row lies outside the 72h reload window. |
+| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | transaction_guid | char(37) | Transaction id |  | Backend |  | [passthrough] From MSSQL `tblTransactionCommitted`; the base load only tests whether a commit row joins. |
+| `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | transaction_guid | char(37) | Transaction id |  | Backend |  | [passthrough] From MSSQL `tblTransactionRolledBack`; the base load only tests whether a rollback row joins. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_successful | boolean | Refund transaction success flag | true | Derived |  | [conditional] `CASE WHEN tc.Transaction_GUID IS NOT NULL AND tr.Transaction_GUID IS NULL THEN TRUE ELSE FALSE END` on the refund's base row (as in 002). `public.fact_return.is_successful` copies it, and `warehouse_loader.fact_return_aggregate` sums only `fact_return` rows `WHERE is_successful`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_charity_amount | numeric(19,4) | Refunded charity per return | 1.00 | Derived |  | [aggregate] `SUM(r.donation_at)` grouped by Refund_GUID, Transaction_GUID, Transaction_Create_dm, Reason_cd. |
+| `warehouse_loader.fact_return_aggregate` | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Total refunded charity per purchase (keyed by the purchase transaction_guid) | 1.00 | Derived |  | [aggregate] `SUM(return_charity_amount)` over `fact_return WHERE is_successful`, by purchase_transaction_guid. Not negated. |
+| `public.fact_transaction` | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity on the purchase row | 1.00 | Derived |  | [lookup] UPDATE purchase row `= fra.returned_charity_amount` (positive). |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | returned_charity_amount | numeric(19,4) | Returned charity amount | 1.00 | Derived |  | [passthrough/conditional] INSERT `ft.returned_charity_amount`. A post-insert UPDATE re-copies it from `public.fact_transaction` for any purchase with a return starting in [begin−72h, end) when the values differ; because the comparison is against `COALESCE(analytics value, 0)`, a NULL fact value never triggers the update. |
 
 </details>
 
@@ -2929,8 +3052,8 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | donation_at | numeric(19,4) | Refunded donation amount | 0.81 | Backend |  | [passthrough] From `tblRefund.Donation_at`. |
-| `public.fact_return` | 1 row / return guid + purchase guid + return_start_datetime + reason code | return_charity_amount | numeric(19,4) | Refunded charity per return | 0.81 | Derived |  | [aggregate] `SUM(r.donation_at)` per return group. |
-| `public.fact_transaction` | 1 row / refund transaction_guid | charity_return_amount | numeric(19,4) | Charity returned, on the refund row | -0.81 | Derived |  | [derived] Updates the refund row from the aggregated return amount in the batch window; negates the returned amount. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_charity_amount | numeric(19,4) | Refunded charity per return | 0.81 | Derived |  | [aggregate] `SUM(r.donation_at)` per return group. |
+| `public.fact_transaction` | 1 row / transaction_guid | charity_return_amount | numeric(19,4) | Charity returned, on the refund row | -0.81 | Derived |  | [derived] Updates the refund row from the aggregated return amount in the batch window; negates the returned amount. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | charity_return_amount | numeric(19,4) | Charity return amount | -0.81 | Derived |  | [passthrough] Copies `ft.charity_return_amount`. |
 
 </details>
@@ -2953,8 +3076,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Attribute_nm | varchar(255) | Attribute key | IsBuyNowOrder | Backend |  | [lookup] Filter `attribute_nm = 'IsBuyNowOrder'`, Create_dm ±10 min. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | Buy-now indicator | true | Backend |  | [passthrough] Supplies the value. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key | IsBuyNowOrder | Backend |  | [lookup] Filter `attribute_nm = 'IsBuyNowOrder'`, Create_dm ±10 min. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Buy-now indicator | true | Backend |  | [passthrough] Supplies the value. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_buynow | boolean | Buy-now transaction flag | true | Derived |  | [conditional] TRUE only when `attribute_nm='IsBuyNowOrder' AND value_tx='true'` (case-sensitive), else FALSE. |
 | `public.fact_transaction` | 1 row / transaction_guid | is_buynow | boolean | Whether the transaction used Buy Now | true | Derived |  | [passthrough] Copies `is_buynow`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | is_buynow | boolean | Buy-now flag | true | Derived |  | [passthrough] Copies `ft.is_buynow`. |
@@ -2981,7 +3104,7 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar | Attribute key that identifies the value | CharityName | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key that identifies the value | CharityName | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
 | `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Attribute value selected by Attribute_nm | Boys and Girls Club | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | charity_name | varchar(256) | Charity name | Boys and Girls Club | Backend |  | [passthrough] Reads `CharityName` from `raw_import_cache.transactionAttribute`. |
 | `public.fact_transaction` | 1 row / transaction_guid | charity_name | varchar(256) | Charity name associated with the transaction | Boys and Girls Club | Backend |  | [passthrough] Copies `charity_name` from `warehouse_loader.fact_transaction_base`. |
@@ -3037,10 +3160,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | Channel attribute value (`LOWER(TRIM(attribute_nm))='channel'`) | angelstudios | Third-party |  | [lookup] Own attribute (Create_dm ±10 min), or the parent purchase's attribute for refunds (no date filter). |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Maps a refund to its purchase for the attribute fallback. |
-| `public.fact_transaction` | 1 row / transaction_guid | partner_channel_id | varchar(256) | Partner channel id | angelstudios | Third-party |  | [lookup] `public.dim_partner_channel.partner_channel_id` joined on `partner_channel_key`. The dimension inserts new `TRIM(value_tx)` values of the `channel` attribute. `partner_channel_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(partner_channel_id)) = LOWER(TRIM(COALESCE(own Channel attribute, parent purchase Channel attribute)))`; unmatched rows use the `partner_channel_id = ''` row. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | partner_channel | varchar(256) | Partner channel id | angelstudios | Third-party |  | [lookup] `dpc.partner_channel_id AS partner_channel` via `ft.partner_channel_key`. `''` when there is no channel. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Channel attribute value (`LOWER(TRIM(attribute_nm))='channel'`) | angelstudios | Backend |  | [lookup] Own attribute (Create_dm ±10 min), or the parent purchase's attribute for refunds (no date filter). |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Maps a refund to its purchase for the attribute fallback. |
+| `public.fact_transaction` | 1 row / transaction_guid | partner_channel_id | varchar(256) | Partner channel id | angelstudios | Backend |  | [lookup] `public.dim_partner_channel.partner_channel_id` joined on `partner_channel_key`. The dimension inserts new `TRIM(value_tx)` values of the `channel` attribute. `partner_channel_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(partner_channel_id)) = LOWER(TRIM(COALESCE(own Channel attribute, parent purchase Channel attribute)))`; unmatched rows use the `partner_channel_id = ''` row. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | partner_channel | varchar(256) | Partner channel id | angelstudios | Backend |  | [lookup] `dpc.partner_channel_id AS partner_channel` via `ft.partner_channel_key`. `''` when there is no channel. |
 
 </details>
 
@@ -3064,10 +3187,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | PartnerDisplayName value on the same transaction as Channel | Angel Studios | Third-party |  | [lookup] Paired with the transaction's `channel` attribute; display attribute Create_dm ±10 min. |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] A refund inherits the parent's channel key, and therefore its display name. |
-| `public.fact_transaction` | 1 row / transaction_guid | partner_display_name | varchar(256) | Partner display name | Angel Studios | Third-party |  | [lookup] `public.dim_partner_channel.partner_display_name` joined on `partner_channel_key`. Set once per channel as `MIN(TRIM(PartnerDisplayName value_tx))` on the same transaction as the channel attribute; later updated only when NULL or `Unknown`. `partner_channel_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(partner_channel_id)) = LOWER(TRIM(COALESCE(own Channel attribute, parent purchase Channel attribute)))`; unmatched rows use the `partner_channel_id = ''` row. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | partner_display_name | varchar(256) | Partner display name | Angel Studios | Third-party |  | [lookup] `dpc.partner_display_name`. `Unknown` for the no-channel key. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | PartnerDisplayName value on the same transaction as Channel | Angel Studios | Backend |  | [lookup] Paired with the transaction's `channel` attribute; display attribute Create_dm ±10 min. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] A refund inherits the parent's channel key, and therefore its display name. |
+| `public.fact_transaction` | 1 row / transaction_guid | partner_display_name | varchar(256) | Partner display name | Angel Studios | Backend |  | [lookup] `public.dim_partner_channel.partner_display_name` joined on `partner_channel_key`. Set once per channel as `MIN(TRIM(PartnerDisplayName value_tx))` on the same transaction as the channel attribute; later updated only when NULL or `Unknown`. `partner_channel_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(partner_channel_id)) = LOWER(TRIM(COALESCE(own Channel attribute, parent purchase Channel attribute)))`; unmatched rows use the `partner_channel_id = ''` row. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | partner_display_name | varchar(256) | Partner display name | Angel Studios | Backend |  | [lookup] `dpc.partner_display_name`. `Unknown` for the no-channel key. |
 
 </details>
 
@@ -3091,10 +3214,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | PartnerPlatform attribute value (`LOWER(TRIM(attribute_nm))='partnerplatform'`) | WEBVIEW | Third-party |  | [lookup] Own attribute (±10 min), or the parent purchase's for refunds. |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] |
-| `public.fact_transaction` | 1 row / transaction_guid | partner_platform_id | varchar(256) | Partner platform id | WEBVIEW | Third-party |  | [lookup] `public.dim_partner_platform.partner_platform_id` joined on `partner_platform_key`. The dimension inserts `MIN(TRIM(value_tx))` per `LOWER(TRIM(value_tx))` for the `partnerplatform` attribute. `partner_platform_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(partner_platform_id)) = LOWER(TRIM(COALESCE(own PartnerPlatform attribute, parent purchase PartnerPlatform attribute)))`; unmatched rows use the `partner_platform_id = ''` row. |
-| `analytics.transactions_data_source` | 1 row / transaction_guid | partner_platform | varchar(256) | Partner platform id | WEBVIEW | Third-party |  | [lookup] `dpp.partner_platform_id AS partner_platform`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | PartnerPlatform attribute value (`LOWER(TRIM(attribute_nm))='partnerplatform'`) | WEBVIEW | Backend |  | [lookup] Own attribute (±10 min), or the parent purchase's for refunds. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Maps a refund to its parent purchase for the PartnerPlatform fallback. |
+| `public.fact_transaction` | 1 row / transaction_guid | partner_platform_id | varchar(256) | Partner platform id | WEBVIEW | Backend |  | [lookup] `public.dim_partner_platform.partner_platform_id` joined on `partner_platform_key`. The dimension inserts `MIN(TRIM(value_tx))` per `LOWER(TRIM(value_tx))` for the `partnerplatform` attribute. `partner_platform_key` is set in `warehouse_loader.fact_transaction_base` where `LOWER(TRIM(partner_platform_id)) = LOWER(TRIM(COALESCE(own PartnerPlatform attribute, parent purchase PartnerPlatform attribute)))`; unmatched rows use the `partner_platform_id = ''` row. |
+| `analytics.transactions_data_source` | 1 row / transaction_guid | partner_platform | varchar(256) | Partner platform id | WEBVIEW | Backend |  | [lookup] `dpp.partner_platform_id AS partner_platform`. |
 
 </details>
 
@@ -3120,11 +3243,11 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Attribute_nm | varchar(255) | Attribute key | NetworkToken | Backend |  | [lookup] `LOWER(TRIM(attribute_nm)) = 'networktoken'`. Own: Create_dm ±10 min. Parent: no date filter. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | Value_tx | varchar(512) | Network-token indicator | true | Backend |  | [passthrough] |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Supplies refund-to-parent-purchase mapping for the partner/platform fallback. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key | NetworkToken | Backend |  | [lookup] `LOWER(TRIM(attribute_nm)) = 'networktoken'`. Own: Create_dm ±10 min. Parent: no date filter. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Network-token indicator | true | Backend |  | [passthrough] Supplies the attribute value. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Supplies refund-to-parent-purchase mapping for the partner/platform fallback. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | network_token_usage | boolean | Network-token usage flag | true | Derived |  | [conditional] `CASE WHEN LOWER(TRIM(COALESCE(own value, parent value))) = 'true' THEN TRUE ELSE FALSE`. |
-| `public.fact_transaction` | 1 row / transaction_guid | network_token_usage | boolean | Whether network-token payment was used | true | Derived |  | [passthrough] |
+| `public.fact_transaction` | 1 row / transaction_guid | network_token_usage | boolean | Whether network-token payment was used | true | Derived |  | [passthrough] Copies `network_token_usage` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | network_token_usage | boolean | Network token usage | true | Derived |  | [passthrough] Copies `ft.network_token_usage`. |
 
 </details>
@@ -3150,7 +3273,7 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.transaction` | 1 row / transaction_guid | Property_nm | varchar(60) | Selling property name | Fandango | Backend |  | [passthrough] From `tblTransaction.Property_nm`. |
-| `raw_import_cache.refund` | 1 row / refund line | Refund_GUID, Transaction_GUID | varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Lets a refund with blank Property_nm use the parent purchase's Property_nm. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → parent purchase mapping | — | Backend |  | [lookup] Lets a refund with blank Property_nm use the parent purchase's Property_nm. |
 | `public.fact_transaction` | 1 row / transaction_guid | property_group | varchar(60) | Property group | Fandango USA | Derived |  | [lookup/conditional] `public.dim_property.property_group` joined on `property_key`: `Fandango USA` when `Property_nm` is NULL or one of '', Fandango, Fandango USA, Flixster, MovieTickets, Undefined; else `TRIM(Property_nm)`. `property_key` is set in `warehouse_loader.fact_transaction_base`: a refund with blank `Property_nm` uses its parent purchase's `Property_nm` (through `raw_import_cache.refund`), `Fandango` is mapped to `Fandango USA`, and unmatched values use the `property_id = ''` row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | property_group | varchar(60) | Property group | Fandango USA | Derived |  | [lookup] `dp.property_group` via `ft.property_key = dp.property_key`. |
 
@@ -3178,10 +3301,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + performance | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
 | `analytics_manual.plf_amenity_mapping` | 1 row / amenity_id | is_plf | varchar(16) | Manual is_plf flag (YES/other) per amenity | YES |  |  | [lookup] Joined where `amenity_id` matches a whole comma-delimited token (spaces removed). |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_plf | boolean | is_plf amenity flag | false | Derived |  | [aggregate/conditional] `COALESCE(taf.is_plf, FALSE)`, where temporary `#transaction_amenity_flags` computes `MAX(UPPER(TRIM(pam.is_plf)) = 'YES')` per transaction over TPA rows with non-empty amenity_ids, `performance_dm >= 2017-12-31`, TPA `Create_dm` in [begin−10m, end+1d] and transaction `Create_dm` in the batch. |
-| `public.fact_transaction` | 1 row / transaction_guid | is_plf | boolean | Whether the performance has a PLF amenity | false | Derived |  | [passthrough] |
+| `public.fact_transaction` | 1 row / transaction_guid | is_plf | boolean | Whether the performance has a PLF amenity | false | Derived |  | [passthrough] Copies `is_plf` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | is_plf | boolean | PLF amenity flag | false | Derived |  | [passthrough] Copies `ft.is_plf`. |
 
 </details>
@@ -3208,10 +3331,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + performance | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
 | `analytics_manual.plf_amenity_mapping` | 1 row / amenity_id | is_imax | varchar(16) | Manual is_imax flag (YES/other) per amenity | YES |  |  | [lookup] Joined where `amenity_id` matches a whole comma-delimited token (spaces removed). |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_imax | boolean | is_imax amenity flag | false | Derived |  | [aggregate/conditional] `COALESCE(taf.is_imax, FALSE)`, where temporary `#transaction_amenity_flags` computes `MAX(UPPER(TRIM(pam.is_imax)) = 'YES')` per transaction over TPA rows with non-empty amenity_ids, `performance_dm >= 2017-12-31`, TPA `Create_dm` in [begin−10m, end+1d] and transaction `Create_dm` in the batch. |
-| `public.fact_transaction` | 1 row / transaction_guid | is_imax | boolean | IMAX amenity flag | false | Derived |  | [passthrough] |
+| `public.fact_transaction` | 1 row / transaction_guid | is_imax | boolean | IMAX amenity flag | false | Derived |  | [passthrough] Copies `is_imax` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | is_imax | boolean | IMAX amenity flag | false | Derived |  | [passthrough] Copies `ft.is_imax`. |
 
 </details>
@@ -3238,10 +3361,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + performance | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
 | `analytics_manual.plf_amenity_mapping` | 1 row / amenity_id | is_3d | varchar(16) | Manual is_3d flag (YES/other) per amenity | YES |  |  | [lookup] Joined where `amenity_id` matches a whole comma-delimited token (spaces removed). |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_3d | boolean | is_3d amenity flag | false | Derived |  | [aggregate/conditional] `COALESCE(taf.is_3d, FALSE)`, where temporary `#transaction_amenity_flags` computes `MAX(UPPER(TRIM(pam.is_3d)) = 'YES')` per transaction over TPA rows with non-empty amenity_ids, `performance_dm >= 2017-12-31`, TPA `Create_dm` in [begin−10m, end+1d] and transaction `Create_dm` in the batch. |
-| `public.fact_transaction` | 1 row / transaction_guid | is_3d | boolean | 3D amenity flag | false | Derived |  | [passthrough] |
+| `public.fact_transaction` | 1 row / transaction_guid | is_3d | boolean | 3D amenity flag | false | Derived |  | [passthrough] Copies `is_3d` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | is_3d | boolean | 3D amenity flag | false | Derived |  | [passthrough] Copies `ft.is_3d`. |
 
 </details>
@@ -3268,10 +3391,10 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + performance | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
+| `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction_guid + Perf_id | amenity_ids | varchar(100) | Comma-delimited amenity IDs | 3,10 | Backend |  | [passthrough] From `tblTransaction_PerformanceAttribute.Amenity_ids`. |
 | `analytics_manual.plf_amenity_mapping` | 1 row / amenity_id | is_higher_fee_amenity | varchar(16) | Manual is_higher_fee_amenity flag (YES/other) per amenity | YES |  |  | [lookup] Joined where `amenity_id` matches a whole comma-delimited token (spaces removed). |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | is_higher_fee_amenity | boolean | is_higher_fee_amenity amenity flag | false | Derived |  | [aggregate/conditional] `COALESCE(taf.is_higher_fee_amenity, FALSE)`, where temporary `#transaction_amenity_flags` computes `MAX(UPPER(TRIM(pam.is_higher_fee_amenity)) = 'YES')` per transaction over TPA rows with non-empty amenity_ids, `performance_dm >= 2017-12-31`, TPA `Create_dm` in [begin−10m, end+1d] and transaction `Create_dm` in the batch. |
-| `public.fact_transaction` | 1 row / transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | false | Derived |  | [passthrough] |
+| `public.fact_transaction` | 1 row / transaction_guid | is_higher_fee_amenity | boolean | Higher-fee amenity flag | false | Derived |  | [passthrough] Copies `is_higher_fee_amenity` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | is_higher_fee_amenity | boolean | higher-fee amenity flag | false | Derived |  | [passthrough] Copies `ft.is_higher_fee_amenity`. |
 
 </details>
@@ -3296,8 +3419,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar | Attribute key that identifies the value | UtmSource | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar | Attribute value selected by Attribute_nm | wpp | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key that identifies the value | UtmSource | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Attribute value selected by Attribute_nm | wpp | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | utm_source | varchar(255) | UTM source | wpp | Backend |  | [lookup] Selects `value_tx` where `attribute_nm = 'UtmSource'` (exact, case-sensitive) and the attribute `Create_dm` is in [begin−10 min, end+10 min). |
 | `public.fact_transaction` | 1 row / transaction_guid | utm_source | varchar(255) | UTM source associated with the transaction | wpp | Backend |  | [passthrough] Copies `utm_source` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | utm_source | varchar(255) | UTM source | wpp | Backend |  | [passthrough] Copies `utm_source` from `public.fact_transaction`. |
@@ -3324,8 +3447,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar | Attribute key that identifies the value | UtmMedium | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar | Attribute value selected by Attribute_nm | cpc | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key that identifies the value | UtmMedium | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Attribute value selected by Attribute_nm | cpc | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium | cpc | Backend |  | [lookup] Selects `value_tx` where `attribute_nm = 'UtmMedium'` (exact, case-sensitive) and the attribute `Create_dm` is in [begin−10 min, end+10 min). |
 | `public.fact_transaction` | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium associated with the transaction | cpc | Backend |  | [passthrough] Copies `utm_medium` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | utm_medium | varchar(255) | UTM medium | cpc | Backend |  | [passthrough] Copies `utm_medium` from `public.fact_transaction`. |
@@ -3352,8 +3475,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar | Attribute key that identifies the value | UtmCampaign | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar | Attribute value selected by Attribute_nm | fall_promo | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key that identifies the value | UtmCampaign | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Attribute value selected by Attribute_nm | fall_promo | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign | fall_promo | Backend |  | [lookup] Selects `value_tx` where `attribute_nm = 'UtmCampaign'` (exact, case-sensitive) and the attribute `Create_dm` is in [begin−10 min, end+10 min). |
 | `public.fact_transaction` | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign associated with the transaction | fall_promo | Backend |  | [passthrough] Copies `utm_campaign` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | utm_campaign | varchar(255) | UTM campaign | fall_promo | Backend |  | [passthrough] Copies `utm_campaign` from `public.fact_transaction`. |
@@ -3380,8 +3503,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar | Attribute key that identifies the value | UtmContent | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar | Attribute value selected by Attribute_nm | banner_a | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key that identifies the value | UtmContent | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Attribute value selected by Attribute_nm | banner_a | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | utm_content | varchar(255) | UTM content | banner_a | Backend |  | [lookup] Selects `value_tx` where `attribute_nm = 'UtmContent'` (exact, case-sensitive) and the attribute `Create_dm` is in [begin−10 min, end+10 min). |
 | `public.fact_transaction` | 1 row / transaction_guid | utm_content | varchar(255) | UTM content associated with the transaction | banner_a | Backend |  | [passthrough] Copies `utm_content` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | utm_content | varchar(255) | UTM content | banner_a | Backend |  | [passthrough] Copies `utm_content` from `public.fact_transaction`. |
@@ -3408,8 +3531,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar | Attribute key that identifies the value | UtmTerm | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
-| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar | Attribute value selected by Attribute_nm | movie+tickets | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | attribute_nm | varchar(255) | Attribute key that identifies the value | UtmTerm | Backend |  | [lookup] Selects the meaning of `value_tx` in `raw_import_cache.transactionAttribute`. |
+| `raw_import_cache.transactionAttribute` | 1 row / transaction_guid + attribute_nm | value_tx | varchar(512) | Attribute value selected by Attribute_nm | movie+tickets | Backend |  | [passthrough] Reads `value_tx` for the matching attribute name from `raw_import_cache.transactionAttribute`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | utm_term | varchar(255) | UTM term | movie+tickets | Backend |  | [lookup] Selects `value_tx` where `attribute_nm = 'UtmTerm'` (exact, case-sensitive) and the attribute `Create_dm` is in [begin−10 min, end+10 min). |
 | `public.fact_transaction` | 1 row / transaction_guid | utm_term | varchar(255) | UTM term associated with the transaction | movie+tickets | Backend |  | [passthrough] Copies `utm_term` from `warehouse_loader.fact_transaction_base`. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | utm_term | varchar(255) | UTM term | movie+tickets | Backend |  | [passthrough] Copies `utm_term` from `public.fact_transaction`. |
@@ -3429,7 +3552,7 @@ flowchart TB
   n2 --> n3
 ```
 
-**Notes:** PR ticket-tax transactions only; NULL for non-PR rows. The source data is in scope from 2026-09-28.
+**Notes:** The ETL is a straight passthrough of `tblTransaction.ticketTaxRate_rt`; nothing in the code sets it to NULL. In production data the value is populated on PR ticket-tax transactions (NULL otherwise), with source data in scope from 2026-09-28.
 
 <details>
 <summary>Lineage table for ticket_tax_rate</summary>
@@ -3474,25 +3597,31 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_sales_fee_tax`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
-  n3 --> n2
-  n2 --> n4
+  n2["`raw_import_cache.transaction`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_transaction`"]
+  n5["`public.fact_sales_fee_tax`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n5
+  n1 --> n5
+  n2 --> n3
+  n3 --> n4
+  n4 --> n5
+  n5 --> n6
 ```
 
-**Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow.
+**Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for ticket_tax_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 1.65 | Third-party (Vertex) |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where `status='OK'`, `document_number` not like `%_con`/`%_tkt`, `load_date > last watermark`. `document_number` is upper-cased. |
-| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Earlier Vertex rows that had no matching fact_transaction yet; retried each run | 1.65 | Third-party (Vertex) |  | [conditional] Unioned with stg, excluding `%_CON`/`%_TKT`. Rows are deleted once matched. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; ticket_sales_amount | varchar(36); numeric(19,4) | Transaction matched to the Vertex document; ticket base | —; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`. `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 1.65 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where `status='OK'`, `document_number` not like `%_con`/`%_tkt`, `load_date > last watermark`. `document_number` is upper-cased. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Earlier Vertex rows that had no matching fact_transaction yet; retried each run | 1.65 | Third-party |  | [conditional] Unioned with stg, excluding `%_CON`/`%_TKT`. Rows are deleted once matched. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax for purchases | 1.65 | Third-party/Derived |  | [conditional] Line item 2 is matched to the transaction; `ticket_base` (own or parent-purchase ticket_sales_amount) must be non-null and ≠ 0, and the latest load_date per document and line is used. UPDATEs an existing `fact_sales_fee_tax` row created from line item 1: `pr_ticket_tax_amount = total_lineitem_tax` for non-Refund/Exchange rows, and `is_pr_transaction = 1` on every matched row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_tax_amount | numeric(19,4) | Vertex ticket tax amount (PR only; in scope from 2026-09-28) | 1.65 | Third-party/Derived |  | [rename/cast] `fstax.pr_ticket_tax_amount` → `ticket_tax_amount` in the half-hourly INSERT (LEFT JOIN on transaction_guid). The salestax UPDATE re-applies it for the last 180 days (`transaction_date_lag`). NULL for non-PR rows and refunds. |
 
@@ -3503,37 +3632,44 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.transactionItem`"]
-  n1["`public.fact_transaction_item`"]
-  n2["`warehouse_loader.fact_transaction_item_aggregate`"]
-  n3["`public.fact_transaction`"]
-  n4["`raw_import_cache.stgsalestaxtransaction`"]
-  n5["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n6["`public.fact_sales_fee_tax`"]
-  n7["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n1 --> n2
-  n2 --> n3
+  n1["`raw_import_cache.stgsalestaxtransaction`"]
+  n2["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n3["`raw_import_cache.transaction`"]
+  n4["`public.fact_transaction_item`"]
+  n5["`warehouse_loader.fact_transaction_base`"]
+  n6["`warehouse_loader.fact_transaction_item_aggregate`"]
+  n7["`public.fact_transaction`"]
+  n8["`public.fact_sales_fee_tax`"]
+  n9["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n8
+  n2 --> n8
+  n3 --> n5
   n4 --> n6
-  n5 --> n6
-  n3 --> n6
+  n5 --> n7
   n6 --> n7
+  n7 --> n8
+  n7 --> n9
+  n8 --> n9
 ```
 
-**Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `#transaction_item_aggregate` (item totals) is also temporary.
+**Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `#transaction_item_aggregate` (item totals) is also temporary. `warehouse_loader.fact_transaction_base` is shown because `public.dim_transaction_type`, joined on its `transaction_type_key`, decides whether the item aggregate is joined (refund rows get NULL). Analytics reads `public.fact_transaction.ticket_sales_amount` directly and subtracts the Vertex ticket tax.
 
 <details>
 <summary>Lineage table for pre_tax_ticket_sales_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy | integer | Item quantity | 2 | Backend |  | [passthrough] |
-| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_at | numeric(10,4) | Item price | 8.00 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_qy | integer | Item quantity | 2 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.transactionItem` | 1 row / transaction_guid + item_guid | Item_at | numeric(10,4) | Item price | 8.00 | Backend |  | [passthrough] From MSSQL `tblTransaction_Item` joined to `tblTransaction`; half-hourly window on the transaction `create_dm`. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax | 1.65 | Third-party |  | [conditional] Line item 2 only (see 124); staged from `data_lake.salestaxtransaction`. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 1.65 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | Transaction_tp | varchar(40) | Transaction type | POSS-Vista Ticket Purchase | Backend |  | [passthrough] MSSQL `tblTransaction.Transaction_tp`; selects the transaction type key in the base load. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_count | integer | Item quantity | 2 | Backend |  | [passthrough] `ti.Item_qy`. |
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_amount | numeric(19,4) | Item price | 8.00 | Backend |  | [passthrough] `ti.Item_at`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_type_id | varchar(40) | Transaction type used to gate the item aggregate | POSS-Vista Ticket Purchase | Backend |  | [lookup/conditional] `public.dim_transaction_type.transaction_type_id` joined on the base row's `transaction_type_key` in `factTransaction.sql`; `warehouse_loader.fact_transaction_item_aggregate` is joined only when it is not `'Refund'`, so refund rows get NULL. The base table also supplies the rows loaded into `public.fact_transaction`. |
 | `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales amount | 16.00 | Derived |  | [aggregate] `SUM(item_count * item_amount)` over non-Donation items. |
 | `public.fact_transaction` | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 16.00 | Derived |  | [lookup] `ftia.item_sales_amount`. NULL for Refund rows. |
-| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax | 1.65 | Third-party (Vertex) |  | [conditional] Line item 2 only (see 124); staged from `data_lake.salestaxtransaction`. |
-| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 1.65 | Third-party (Vertex) |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax | 1.65 | Third-party/Derived |  | [conditional] See 124. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | pre_tax_ticket_sales_amount | numeric(19,4) | Ticket sales before PR ticket tax | 14.35 | Derived |  | [derived] INSERT: `ft.ticket_sales_amount - COALESCE(fstax.pr_ticket_tax_amount, 0)`. salestax UPDATE: `transactions_data_source.ticket_sales_amount - COALESCE(s.pr_ticket_tax_amount, 0)` (180 days). Equals ticket_sales_amount for non-PR rows; NULL for refunds. Example from prd 2026-11-08: 16.00 − 1.65 = 14.35. |
 
@@ -3545,32 +3681,41 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_sales_fee_tax (refund row)`"]
-  n3["`public.fact_transaction`"]
-  n4["`public.fact_return`"]
-  n5["`public.fact_sales_fee_tax (purchase row)`"]
-  n6["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
-  n3 --> n2
+  n2["`raw_import_cache.transaction`"]
+  n3["`raw_import_cache.refund`"]
+  n4["`warehouse_loader.fact_transaction_base`"]
+  n5["`public.fact_transaction`"]
+  n6["`public.fact_sales_fee_tax (refund row)`"]
+  n7["`public.fact_return`"]
+  n8["`public.fact_sales_fee_tax (purchase row)`"]
+  n9["`analytics.transactions_data_source`"]
+  n0 --> n6
+  n1 --> n6
   n2 --> n4
+  n3 --> n7
   n4 --> n5
   n5 --> n6
+  n6 --> n7
+  n7 --> n8
+  n8 --> n9
 ```
 
-**Notes:** No nonzero production examples were found in the audit snapshot; the sign follows the negative-sum rule. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow.
+**Notes:** No nonzero production examples were found in the audit snapshot; the sign follows the negative-sum rule. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for returned_ticket_tax_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax on the refund document | (see 127) | Third-party (Vertex) |  | [conditional] Line item 2 on Refund/Exchange documents. |
-| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | (see 127) | Third-party (Vertex) |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; ticket_sales_amount | varchar(36); numeric(19,4) | Transaction matched to the Vertex document; ticket base | —; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`. `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. |
-| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on the refund | (Vertex sign, not negated) | Third-party/Derived |  | [conditional] See 127. |
-| `public.fact_return` | 1 row / return guid + purchase guid + return datetime + reason | return_transaction_guid, purchase_transaction_guid | varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(return_transaction_guid)`. |
-| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Ticket tax returned against this purchase | 1.65 (expected positive when Vertex return tax is negative) | Derived |  | [aggregate] `CASE WHEN COUNT(ticket_tax_return_amount) > 0 THEN -SUM(NVL(ticket_tax_return_amount,0)) ELSE NULL END` grouped by purchase guid. Only updates fst rows with transaction_end_datetime in the last 180 days. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax on the refund document | (see 127) | Third-party |  | [conditional] Line item 2 on Refund/Exchange documents. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | (see 127) | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on the refund | (Vertex sign, not negated) | Third-party/Derived |  | [conditional] See 127. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(return_transaction_guid)`. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Ticket tax returned against this purchase | 1.65 (expected positive when Vertex return tax is negative) | Derived |  | [aggregate] `CASE WHEN COUNT(ticket_tax_return_amount) > 0 THEN -SUM(NVL(ticket_tax_return_amount,0)) ELSE NULL END` grouped by purchase guid. Only updates fst rows with transaction_end_datetime in the last 180 days. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Returned ticket tax amount (purchase row) | 1.65 | Derived |  | [passthrough] Half-hourly INSERT from `fstax`, plus the salestax UPDATE (180 days). |
 
 </details>
@@ -3581,29 +3726,38 @@ flowchart TB
 flowchart TB
   n0["`raw_import_cache.stgsalestaxtransaction`"]
   n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
-  n2["`public.fact_return`"]
-  n3["`public.fact_sales_fee_tax`"]
-  n4["`public.fact_transaction`"]
-  n5["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n3
-  n4 --> n3
-  n2 --> n3
-  n3 --> n5
+  n2["`raw_import_cache.transaction`"]
+  n3["`raw_import_cache.refund`"]
+  n4["`public.fact_return`"]
+  n5["`warehouse_loader.fact_transaction_base`"]
+  n6["`public.fact_transaction`"]
+  n7["`public.fact_sales_fee_tax`"]
+  n8["`analytics.transactions_data_source`"]
+  n0 --> n7
+  n1 --> n7
+  n2 --> n5
+  n3 --> n4
+  n4 --> n7
+  n5 --> n6
+  n6 --> n7
+  n7 --> n8
 ```
 
-**Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `#TICKET_TAX_BASE` matches refunds to purchases through `public.fact_return` and uses `COALESCE(purchase.ticket_sales_amount, own ticket_sales_amount)`.
+**Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `#TICKET_TAX_BASE` matches refunds to purchases through `public.fact_return` and uses `COALESCE(purchase.ticket_sales_amount, own ticket_sales_amount)`. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for ticket_tax_return_amount</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 0.0000 | Third-party (Vertex) |  | [conditional] Staged from `data_lake.salestaxtransaction`; filters as in 124. |
-| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 0.0000 | Third-party (Vertex) |  | [conditional] Excludes `%_CON`/`%_TKT`. |
-| `public.fact_return` | 1 row / return guid + purchase guid + ... | purchase_transaction_guid | varchar | Refund → purchase mapping, used for ticket_base | — | ETL |  | [lookup] `ticket_base = COALESCE(purchase.ticket_sales_amount, own)`, because refund rows have NULL ticket_sales_amount. |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; ticket_sales_amount | varchar(36); numeric(19,4) | Transaction matched to the Vertex document; ticket base | —; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`. `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. |
-| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on Refund/Exchange rows | 0.0000 | Third-party/Derived |  | [conditional] Line item 2, `ticket_base` non-null and ≠ 0. UPDATE existing fst row: `ticket_tax_return_amount = total_lineitem_tax` when `transaction_type_id IN ('Refund','Exchange')`. Not negated (sign as delivered by Vertex). |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 0.0000 | Third-party |  | [conditional] Staged from `data_lake.salestaxtransaction`; filters as in 124. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 0.0000 | Third-party |  | [conditional] Excludes `%_CON`/`%_TKT`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | purchase_transaction_guid | varchar | Refund → purchase mapping, used for ticket_base | — | ETL |  | [lookup] `ticket_base = COALESCE(purchase.ticket_sales_amount, own)`, because refund rows have NULL ticket_sales_amount. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on Refund/Exchange rows | 0.0000 | Third-party/Derived |  | [conditional] Line item 2, `ticket_base` non-null and ≠ 0. UPDATE existing fst row: `ticket_tax_return_amount = total_lineitem_tax` when `transaction_type_id IN ('Refund','Exchange')`. Not negated (sign as delivered by Vertex). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_tax_return_amount | numeric(19,4) | Ticket tax return amount (refund row) | 0.0000 | Third-party/Derived |  | [passthrough] INSERT from fstax, plus the salestax UPDATE (180 days). In scope from 2026-09-28. |
 
 </details>
@@ -3612,28 +3766,43 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`public.fact_sales_fee_tax (purchase row)`"]
-  n1["`public.fact_transaction`"]
-  n2["`public.fact_return`"]
-  n3["`public.fact_sales_fee_tax (refund row)`"]
-  n4["`analytics.transactions_data_source`"]
-  n1 --> n0
-  n0 --> n2
-  n2 --> n3
-  n3 --> n4
+  n0["`raw_import_cache.transaction`"]
+  n1["`raw_import_cache.refund`"]
+  n2["`raw_import_cache.stgsalestaxtransaction`"]
+  n3["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n4["`warehouse_loader.fact_transaction_base`"]
+  n5["`public.fact_transaction`"]
+  n6["`public.fact_sales_fee_tax (purchase row)`"]
+  n7["`public.fact_return`"]
+  n8["`public.fact_sales_fee_tax (refund row)`"]
+  n9["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n7
+  n2 --> n6
+  n3 --> n6
+  n4 --> n5
+  n5 --> n6
+  n6 --> n7
+  n7 --> n8
+  n8 --> n9
 ```
 
-**Notes:** This refund field copies the original purchase tax through `public.fact_return`. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow.
+**Notes:** This refund field copies the original purchase tax through `public.fact_return`. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `public.dim_transaction_type` is joined to `public.fact_transaction` on `transaction_type_key`; its `transaction_type_id` decides the Refund/Exchange branch of the tax load.
 
 <details>
 <summary>Lineage table for ticket_tax_amount_for_returned_purchase</summary>
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; ticket_sales_amount | varchar(36); numeric(19,4) | Transaction matched to the Vertex document; ticket base | —; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`. `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. |
-| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax on the original purchase | 1.65 | Third-party/Derived |  | [conditional] See 124 (Vertex line item 2). |
-| `public.fact_return` | 1 row / return guid + purchase guid + ... | return_transaction_guid, purchase_transaction_guid | varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(purchase_transaction_guid)`. |
-| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's ticket tax, carried onto the refund | 1.65 | Derived |  | [lookup] UPDATE refund row `= purchase fst.pr_ticket_tax_amount`, matched on `UPPER(return_transaction_guid)`. Only rows in the last 180 days. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | transaction_guid; Transaction_tp | char(37); varchar(40) | Transaction id and type | —; POSS-Vista Ticket Purchase | Backend |  | [passthrough] From MSSQL `tblTransaction`; `Transaction_tp` selects the `dim_transaction_type` key in the base load. |
+| `raw_import_cache.refund` | 1 row / refund line (Refund_GUID + Transaction_GUID) | Refund_GUID; Transaction_GUID | varchar; varchar | Refund → purchase mapping | — | Backend |  | [lookup] From MSSQL `tblRefund`; supplies the refund-to-purchase mapping grouped into `public.fact_return`. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Staged Vertex tax rows | 1.65 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where `status='OK'`, `document_number` not like `%_con`/`%_tkt`, `load_date > last watermark`; line item 2 feeds the purchase row's `pr_ticket_tax_amount` (see 124). |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 1.65 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
+| `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_guid; transaction_type_key | varchar(36); integer | Transaction key and transaction type key | —; — | ETL |  | [lookup] Copies `Transaction_GUID`; `transaction_type_key` comes from `dim_transaction_type.transaction_type_id = raw_import_cache.transaction.Transaction_tp` (exact match), else the `transaction_type_id = ''` (Unknown) row. |
+| `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; transaction_type_id; ticket_sales_amount | varchar(36); varchar(40); numeric(19,4) | Transaction matched to the Vertex document; its transaction type; ticket base (from the item aggregate, see 079) | —; POSS-Vista Ticket Purchase; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `document_number = fact_transaction.transaction_guid` (`document_number` is upper-cased when staged). `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. `public.dim_transaction_type.transaction_type_id`, joined on `transaction_type_key`, decides the Refund/Exchange branch. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax on the original purchase | 1.65 | Third-party/Derived |  | [conditional] See 124 (Vertex line item 2). |
+| `public.fact_return` | 1 row / return_transaction_guid + purchase_transaction_guid + return_start_datetime + return_reason_code | return_transaction_guid; purchase_transaction_guid | varchar; varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(purchase_transaction_guid)`. |
+| `public.fact_sales_fee_tax` | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's ticket tax, carried onto the refund | 1.65 | Derived |  | [lookup] UPDATE refund row `= purchase fst.pr_ticket_tax_amount`, matched on `UPPER(return_transaction_guid)`. Only rows in the last 180 days. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Ticket tax amount for returned purchase | 1.65 | Derived |  | [passthrough] INSERT from fstax, plus the salestax UPDATE. |
 
 </details>
