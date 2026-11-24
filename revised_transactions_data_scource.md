@@ -385,15 +385,17 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.movieDetail` / `movieDetailDeleted`"]
-  n1["`raw_import_cache.transactionPerformanceAttribute`"]
-  n2["`warehouse_loader.fact_transaction_base`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n3
-  n1 --> n2
+  n0["`raw_import_cache.movieDetail`"]
+  n1["`raw_import_cache.movieDetailDeleted`"]
+  n2["`raw_import_cache.transactionPerformanceAttribute`"]
+  n3["`warehouse_loader.fact_transaction_base`"]
+  n4["`public.fact_transaction`"]
+  n5["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n4
   n2 --> n3
   n3 --> n4
+  n4 --> n5
 ```
 
 **Notes:** `public.dim_movie` joins to `public.fact_transaction`. The movie release date comes from `raw_import_cache.movieDetail.date_released`, with `raw_import_cache.movieDetailDeleted.date_released` as fallback. The showtime timestamp comes from `raw_import_cache.transactionPerformanceAttribute.Performance_dm` and flows through the base and public fact. Analytics compares the release date with `public.fact_transaction.performance_datetime_local`, truncated to a day. Value column: `public.dim_movie.movie_release_date`. `movie_key` is set in `warehouse_loader.fact_transaction_base` where `raw_import_cache.transactionPerformanceAttribute.Movie_detail_id = dim_movie.movie_id`; unmatched rows use the Unknown row (`movie_id` NULL).
@@ -403,7 +405,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.movieDetail` / `movieDetailDeleted` | 1 row / movie_detail_id | date_released | timestamp | Release date | 2026-09-14 00:00:00 | Backend |  | [passthrough] Daily snapshot. |
+| `raw_import_cache.movieDetail` | 1 row / movie_detail_id | date_released | timestamp | Release date (active movies) | 2026-09-14 00:00:00 | Backend |  | [passthrough] Full daily snapshot of MSSQL `movie_detail`. |
+| `raw_import_cache.movieDetailDeleted` | 1 row / movie_detail_id | date_released | timestamp | Release date (deleted movies) | 2026-09-14 00:00:00 | Backend |  | [passthrough] Full daily snapshot of MSSQL `Movie_Detail_Deleted`. |
 | `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction and performance | Performance_dm | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Source of `performance_datetime_local`. |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `tpa.Performance_dm`; TPA is joined when its `Create_dm` is in [begin−10m, end+1d]. |
 | `public.fact_transaction` | 1 row / transaction_guid | performance_datetime_local | timestamp | Performance datetime (theater local) | 2026-10-05 19:30:00 | Backend |  | [passthrough] Copies `performance_datetime_local` from `warehouse_loader.fact_transaction_base`. |
@@ -416,15 +419,19 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.transactionCommitted` / `transactionRolledBack` / `transaction`"]
-  n1["`raw_import_cache.transactionPerformanceAttribute`"]
-  n2["`warehouse_loader.fact_transaction_base`"]
-  n3["`public.fact_transaction`"]
-  n4["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
-  n2 --> n3
+  n0["`raw_import_cache.transactionCommitted`"]
+  n1["`raw_import_cache.transactionRolledBack`"]
+  n2["`raw_import_cache.transaction`"]
+  n3["`raw_import_cache.transactionPerformanceAttribute`"]
+  n4["`warehouse_loader.fact_transaction_base`"]
+  n5["`public.fact_transaction`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n4
+  n1 --> n4
+  n2 --> n4
   n3 --> n4
+  n4 --> n5
+  n5 --> n6
 ```
 
 **Notes:** Analytics calculates the day difference from `public.fact_transaction.transaction_end_datetime` (US/Pacific day) to `performance_datetime_local` (theater-local day). The end time uses commit/rollback event times, falling back to `raw_import_cache.transaction.create_dm`; performance time comes from `raw_import_cache.transactionPerformanceAttribute.Performance_dm`.
@@ -434,7 +441,9 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.transactionCommitted` / `transactionRolledBack` / `transaction` | 1 row / transaction_guid | Create_dm | timestamp | Commit / rollback / start time (UTC) | 2026-10-01 16:11:05 | Backend |  | [passthrough] |
+| `raw_import_cache.transactionCommitted` | 1 row / transaction_guid | create_dm | timestamp | Commit time | 2026-10-01 16:11:05 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transactionCommitted`. |
+| `raw_import_cache.transactionRolledBack` | 1 row / transaction_guid | create_dm | timestamp | Rollback time | NULL | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transactionRolledBack`. |
+| `raw_import_cache.transaction` | 1 row / transaction_guid | create_dm | timestamp | Transaction start time | 2026-10-01 16:10:00 | Backend |  | [passthrough] Reads `create_dm` from `raw_import_cache.transaction`. |
 | `raw_import_cache.transactionPerformanceAttribute` | 1 row / transaction and performance | Performance_dm | timestamp | Local showtime | 2026-10-05 19:30:00 | Backend |  | [passthrough] |
 | `warehouse_loader.fact_transaction_base` | 1 row / transaction_guid | transaction_end_datetime; performance_datetime_local | timestamp | End (UTC); showtime (local) | 2026-10-01 16:11:05; 2026-10-05 19:30:00 | Derived |  | [conditional] End time as in 009. [passthrough] `tpa.Performance_dm`. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_end_datetime; performance_datetime_local | timestamp | End (UTC); showtime (local) | 2026-10-01 16:11:05; 2026-10-05 19:30:00 | Derived |  | [passthrough] |
@@ -671,12 +680,14 @@ flowchart TB
 ```mermaid
 flowchart TB
   n0["`raw_import_cache.affiliate`"]
-  n1["`raw_import_cache.affiliateGroupMapping` / `affiliateGroup`"]
-  n2["`public.fact_transaction`"]
-  n3["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
+  n1["`raw_import_cache.affiliateGroupMapping`"]
+  n2["`raw_import_cache.affiliateGroup`"]
+  n3["`public.fact_transaction`"]
+  n4["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n3
   n2 --> n3
+  n3 --> n4
 ```
 
 **Notes:** `public.dim_affiliate` is joined to `public.fact_transaction`. The value is `public.dim_affiliate.affiliate_group_name`, built from `raw_import_cache.affiliateGroup.name` via `raw_import_cache.affiliateGroupMapping`. The repo contains the dimension SQL but not extract/load jobs for these mapping tables.
@@ -687,7 +698,8 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `raw_import_cache.affiliate` | 1 row / affiliate_id | Affiliate_id | int | Affiliate key used to join affiliate group mapping | 11879 | Backend |  | [passthrough] Full daily snapshot of `tblAffiliate`. |
-| `raw_import_cache.affiliateGroupMapping` / `affiliateGroup` | mapping / 1 row per group | affiliate_id, affiliate_group_id / id, name | int / int, varchar(100) | Affiliate-to-group mapping | 11879 to iPhone App | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Tables exist in prd. |
+| `raw_import_cache.affiliateGroupMapping` | 1 row / affiliate_id + affiliate_group_id | affiliate_id; affiliate_group_id | int; int | Affiliate-to-group mapping | 11879; — | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Table exists in prd. |
+| `raw_import_cache.affiliateGroup` | 1 row / id | id; name | int; varchar(100) | Affiliate group | —; iPhone App | Backend |  | [passthrough] Loader not present in this repo (no extract/copy SQL). Table exists in prd. |
 | `public.fact_transaction` | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group | iPhone App | Backend |  | [lookup] `public.dim_affiliate.affiliate_group_name` joined on `affiliate_key`. Set by UPDATE from `affiliateGroup.name` through `affiliateGroupMapping` (many-to-many, so the chosen group is not deterministic when an affiliate has several). `affiliate_key` is set in `warehouse_loader.fact_transaction_base` where `dim_affiliate.affiliate_id = raw_import_cache.transaction.Affiliate_id`; NULL or unmatched IDs use the `affiliate_id = 0` (Unknown) row. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | affiliate_group_name | varchar(100) | Affiliate group | iPhone App | Backend |  | [lookup] `dim_affiliate.affiliate_group_name`. |
 
@@ -2518,13 +2530,15 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.stgsalestaxtransaction` / `_unmatched`"]
-  n1["`public.fact_transaction`"]
-  n2["`public.fact_sales_fee_tax`"]
-  n3["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
+  n0["`raw_import_cache.stgsalestaxtransaction`"]
+  n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n2["`public.fact_transaction`"]
+  n3["`public.fact_sales_fee_tax`"]
+  n4["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n3
   n2 --> n3
+  n3 --> n4
 ```
 
 **Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow.
@@ -2534,7 +2548,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` / `_unmatched` | line-item staging | document_number, lineitem_number, total_lineitem_tax, load_date | varchar, int, numeric(19,4), timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on purchases | 0.35 | Third-party/Derived |  | [conditional] lineitem_number=1, latest load_date, INNER JOIN fact_transaction; = total_lineitem_tax when type NOT IN (Refund, Exchange), else NULL. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales fee tax amount | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
@@ -2545,17 +2560,19 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.stgsalestaxtransaction` / `_unmatched`"]
-  n1["`public.fact_transaction`"]
-  n2["`public.fact_sales_fee_tax` (refund row)"]
-  n3["`public.fact_return`"]
-  n4["`public.fact_sales_fee_tax` (purchase row)"]
-  n5["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
+  n0["`raw_import_cache.stgsalestaxtransaction`"]
+  n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n2["`public.fact_transaction`"]
+  n3["`public.fact_sales_fee_tax (refund row)`"]
+  n4["`public.fact_return`"]
+  n5["`public.fact_sales_fee_tax (purchase row)`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n3
   n2 --> n3
   n3 --> n4
   n4 --> n5
+  n5 --> n6
 ```
 
 **Notes:** This is a purchase-row rollup through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession purchases). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update.
@@ -2565,11 +2582,12 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` / `_unmatched` | line-item staging | document_number, lineitem_number, total_lineitem_tax, load_date | varchar, int, numeric(19,4), timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
-| `public.fact_sales_fee_tax` (refund row) | 1 row / refund transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on Refund/Exchange rows (see 094); this refund-side value is rolled up to the purchase row. |
+| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on Refund/Exchange rows (see 094); this refund-side value is rolled up to the purchase row. |
 | `public.fact_return` | refund/purchase pair | return_transaction_guid, purchase_transaction_guid | varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
-| `public.fact_sales_fee_tax` (purchase row) | 1 row / purchase transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax returned against the purchase (positive) | 0.35 | Derived |  | [aggregate] -SUM(NVL(refunds' sales_fee_tax_return_amount,0)), NULL if none; purchase rows in the lag window. |
+| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Tax returned against the purchase (positive) | 0.35 | Derived |  | [aggregate] -SUM(NVL(refunds' sales_fee_tax_return_amount,0)), NULL if none; purchase rows in the lag window. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | returned_sales_fee_tax_amount | numeric(19,4) | Returned sales fee tax amount | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
 
 </details>
@@ -2578,13 +2596,15 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.stgsalestaxtransaction` / `_unmatched`"]
-  n1["`public.fact_transaction`"]
-  n2["`public.fact_sales_fee_tax`"]
-  n3["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
+  n0["`raw_import_cache.stgsalestaxtransaction`"]
+  n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n2["`public.fact_transaction`"]
+  n3["`public.fact_sales_fee_tax`"]
+  n4["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n3
   n2 --> n3
+  n3 --> n4
 ```
 
 **Notes:** Temporary `#NEW_TRANSACTIONS` (line item 1, latest load_date per document, matched to `public.fact_transaction`) supports the tax load, and `#transactionSalesTax` (180-day lag window) supports the Analytics update; both are excluded from the permanent flow.
@@ -2594,7 +2614,8 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` / `_unmatched` | line-item staging | document_number, lineitem_number, total_lineitem_tax, load_date | varchar, int, numeric(19,4), timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales-fee tax on refund/exchange rows | -0.35 | Third-party/Derived |  | [conditional] = total_lineitem_tax when type IN (Refund, Exchange). |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_return_amount | numeric(19,4) | Sales fee tax return amount | -0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
@@ -2605,17 +2626,19 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.stgsalestaxtransaction` / `_unmatched`"]
-  n1["`public.fact_transaction`"]
-  n2["`public.fact_sales_fee_tax` (purchase row)"]
-  n3["`public.fact_return`"]
-  n4["`public.fact_sales_fee_tax` (refund row)"]
-  n5["`analytics.transactions_data_source`"]
-  n0 --> n2
-  n1 --> n2
+  n0["`raw_import_cache.stgsalestaxtransaction`"]
+  n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n2["`public.fact_transaction`"]
+  n3["`public.fact_sales_fee_tax (purchase row)`"]
+  n4["`public.fact_return`"]
+  n5["`public.fact_sales_fee_tax (refund row)`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n3
+  n1 --> n3
   n2 --> n3
   n3 --> n4
   n4 --> n5
+  n5 --> n6
 ```
 
 **Notes:** This refund field copies the original purchase's sales-fee tax through `public.fact_return` (the same UPDATE is repeated over `public.fact_concession_return` for concession refunds). Line-item-1 rows reach `public.fact_sales_fee_tax` through temporary `#NEW_TRANSACTIONS`; temporary `#transactionSalesTax` supports the Analytics update.
@@ -2625,11 +2648,12 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` / `_unmatched` | line-item staging | document_number, lineitem_number, total_lineitem_tax, load_date | varchar, int, numeric(19,4), timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Staged Vertex rows | 0.35 | Third-party |  | [conditional] Loaded from `data_lake.salestaxtransaction` (Vertex results) where status='OK', document_number is not like `%_con`/`%_tkt`, and load_date > last_max_date; `document_number` is upper-cased. Unmatched rows are kept in `_unmatched` and retried next run. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | document_number; lineitem_number; total_lineitem_tax; load_date | varchar; int; numeric(19,4); timestamp | Unmatched Vertex rows, retried each run | 0.35 | Third-party |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid | varchar(36) | Transaction matched to the Vertex document |  | ETL |  | [lookup] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`; `dim_transaction_type` on the matched row decides the Refund/Exchange branch. Unmatched staged rows stay in `stgsalestaxtransaction_unmatched` for the next run. |
-| `public.fact_sales_fee_tax` (purchase row) | 1 row / purchase transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on the original purchase | 0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on non-Refund/Exchange rows (see 092); copied to the refund through `public.fact_return`. |
+| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | sales_fee_tax_amount | numeric(19,4) | Sales-fee tax on the original purchase | 0.35 | Third-party/Derived |  | [conditional] `= total_lineitem_tax` on non-Refund/Exchange rows (see 092); copied to the refund through `public.fact_return`. |
 | `public.fact_return` | refund/purchase pair | return_transaction_guid, purchase_transaction_guid | varchar | Refund↔purchase mapping | — | ETL |  | [lookup] Supplies the refund-to-purchase mapping only. |
-| `public.fact_sales_fee_tax` (refund row) | 1 row / refund transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's sales-fee tax, on the refund row | 0.35 | Derived |  | [lookup] = purchase FST.sales_fee_tax_amount via fact_return; lag window. |
+| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's sales-fee tax, on the refund row | 0.35 | Derived |  | [lookup] = purchase FST.sales_fee_tax_amount via fact_return; lag window. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | sales_fee_tax_amount_for_returned_purchase | numeric(19,4) | Sales fee tax amount for returned purchase | 0.35 | Third-party/Derived |  | [lookup] Half-hourly insert LEFT JOINs fact_sales_fee_tax on transaction_guid. The salestax DAG UPDATEs the same columns for rows whose `transaction_end_datetime_los_angeles` is in the 180-day lag window. |
 
 </details>
@@ -3482,15 +3506,17 @@ flowchart TB
   n1["`public.fact_transaction_item`"]
   n2["`warehouse_loader.fact_transaction_item_aggregate`"]
   n3["`public.fact_transaction`"]
-  n4["`raw_import_cache.stgsalestaxtransaction` / `_unmatched`"]
-  n5["`public.fact_sales_fee_tax`"]
-  n6["`analytics.transactions_data_source`"]
+  n4["`raw_import_cache.stgsalestaxtransaction`"]
+  n5["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n6["`public.fact_sales_fee_tax`"]
+  n7["`analytics.transactions_data_source`"]
   n0 --> n1
   n1 --> n2
   n2 --> n3
-  n4 --> n5
-  n3 --> n5
+  n4 --> n6
   n5 --> n6
+  n3 --> n6
+  n6 --> n7
 ```
 
 **Notes:** Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow. `#transaction_item_aggregate` (item totals) is also temporary.
@@ -3506,7 +3532,8 @@ flowchart TB
 | `public.fact_transaction_item` | 1 row / transaction_guid + item_guid | item_amount | numeric(19,4) | Item price | 8.00 | Backend |  | [passthrough] `ti.Item_at`. |
 | `warehouse_loader.fact_transaction_item_aggregate` | 1 row / transaction_guid | item_sales_amount | numeric(19,4) | Ticket sales amount | 16.00 | Derived |  | [aggregate] `SUM(item_count * item_amount)` over non-Donation items. |
 | `public.fact_transaction` | 1 row / transaction_guid | ticket_sales_amount | numeric(19,4) | Ticket sales amount | 16.00 | Derived |  | [lookup] `ftia.item_sales_amount`. NULL for Refund rows. |
-| `raw_import_cache.stgsalestaxtransaction` / `_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax | 1.65 | Third-party (Vertex) |  | [conditional] Line item 2 only (see 124); staged from `data_lake.salestaxtransaction`. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax | 1.65 | Third-party (Vertex) |  | [conditional] Line item 2 only (see 124); staged from `data_lake.salestaxtransaction`. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | 1.65 | Third-party (Vertex) |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_sales_fee_tax` | 1 row / transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax | 1.65 | Third-party/Derived |  | [conditional] See 124. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | pre_tax_ticket_sales_amount | numeric(19,4) | Ticket sales before PR ticket tax | 14.35 | Derived |  | [derived] INSERT: `ft.ticket_sales_amount - COALESCE(fstax.pr_ticket_tax_amount, 0)`. salestax UPDATE: `transactions_data_source.ticket_sales_amount - COALESCE(s.pr_ticket_tax_amount, 0)` (180 days). Equals ticket_sales_amount for non-PR rows; NULL for refunds. Example from prd 2026-11-08: 16.00 − 1.65 = 14.35. |
 
@@ -3516,17 +3543,19 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`raw_import_cache.stgsalestaxtransaction` / `_unmatched`"]
-  n1["`public.fact_sales_fee_tax` (refund row)"]
-  n2["`public.fact_transaction`"]
-  n3["`public.fact_return`"]
-  n4["`public.fact_sales_fee_tax` (purchase row)"]
-  n5["`analytics.transactions_data_source`"]
-  n0 --> n1
-  n2 --> n1
-  n1 --> n3
-  n3 --> n4
+  n0["`raw_import_cache.stgsalestaxtransaction`"]
+  n1["`raw_import_cache.stgsalestaxtransaction_unmatched`"]
+  n2["`public.fact_sales_fee_tax (refund row)`"]
+  n3["`public.fact_transaction`"]
+  n4["`public.fact_return`"]
+  n5["`public.fact_sales_fee_tax (purchase row)`"]
+  n6["`analytics.transactions_data_source`"]
+  n0 --> n2
+  n1 --> n2
+  n3 --> n2
+  n2 --> n4
   n4 --> n5
+  n5 --> n6
 ```
 
 **Notes:** No nonzero production examples were found in the audit snapshot; the sign follows the negative-sum rule. Temporary `#TICKET_TAX_BASE` (ticket base per transaction, using the parent purchase for refunds), `#NEW_TRANSACTIONS_TICKET` (line item 2, latest load_date per document) and `#transactionSalesTax` (180-day Analytics update) are excluded from the permanent flow.
@@ -3536,11 +3565,12 @@ flowchart TB
 
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `raw_import_cache.stgsalestaxtransaction` / `_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax on the refund document | (see 127) | Third-party (Vertex) |  | [conditional] Line item 2 on Refund/Exchange documents. |
+| `raw_import_cache.stgsalestaxtransaction` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Vertex line-item tax on the refund document | (see 127) | Third-party (Vertex) |  | [conditional] Line item 2 on Refund/Exchange documents. |
+| `raw_import_cache.stgsalestaxtransaction_unmatched` | 1 row / document_number + lineitem_number + load_date | total_lineitem_tax | numeric(19,4) | Unmatched Vertex rows, retried each run | (see 127) | Third-party (Vertex) |  | [conditional] Earlier staged rows with no matching `public.fact_transaction`; unioned with the stage (excluding `%_CON`/`%_TKT`), retried each run and deleted once matched. |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; ticket_sales_amount | varchar(36); numeric(19,4) | Transaction matched to the Vertex document; ticket base | —; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`. `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. |
-| `public.fact_sales_fee_tax` (refund row) | 1 row / refund transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on the refund | (Vertex sign, not negated) | Third-party/Derived |  | [conditional] See 127. |
+| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | ticket_tax_return_amount | numeric(19,4) | PR ticket tax on the refund | (Vertex sign, not negated) | Third-party/Derived |  | [conditional] See 127. |
 | `public.fact_return` | 1 row / return guid + purchase guid + return datetime + reason | return_transaction_guid, purchase_transaction_guid | varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(return_transaction_guid)`. |
-| `public.fact_sales_fee_tax` (purchase row) | 1 row / purchase transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Ticket tax returned against this purchase | 1.65 (expected positive when Vertex return tax is negative) | Derived |  | [aggregate] `CASE WHEN COUNT(ticket_tax_return_amount) > 0 THEN -SUM(NVL(ticket_tax_return_amount,0)) ELSE NULL END` grouped by purchase guid. Only updates fst rows with transaction_end_datetime in the last 180 days. |
+| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Ticket tax returned against this purchase | 1.65 (expected positive when Vertex return tax is negative) | Derived |  | [aggregate] `CASE WHEN COUNT(ticket_tax_return_amount) > 0 THEN -SUM(NVL(ticket_tax_return_amount,0)) ELSE NULL END` grouped by purchase guid. Only updates fst rows with transaction_end_datetime in the last 180 days. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | returned_ticket_tax_amount | numeric(19,4) | Returned ticket tax amount (purchase row) | 1.65 | Derived |  | [passthrough] Half-hourly INSERT from `fstax`, plus the salestax UPDATE (180 days). |
 
 </details>
@@ -3582,10 +3612,10 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  n0["`public.fact_sales_fee_tax` (purchase row)"]
+  n0["`public.fact_sales_fee_tax (purchase row)`"]
   n1["`public.fact_transaction`"]
   n2["`public.fact_return`"]
-  n3["`public.fact_sales_fee_tax` (refund row)"]
+  n3["`public.fact_sales_fee_tax (refund row)`"]
   n4["`analytics.transactions_data_source`"]
   n1 --> n0
   n0 --> n2
@@ -3601,9 +3631,9 @@ flowchart TB
 | Redshift Table | Table Grain | Column Name | Data Type | Description | Example Value | Source | GitHub Link | Logic Explanation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `public.fact_transaction` | 1 row / transaction_guid | transaction_guid; ticket_sales_amount | varchar(36); numeric(19,4) | Transaction matched to the Vertex document; ticket base | —; 16.00 | ETL |  | [lookup/conditional] INNER JOIN on `UPPER(document_number) = fact_transaction.transaction_guid`. `ticket_base = COALESCE(parent purchase ticket_sales_amount (refunds, via public.fact_return), own ticket_sales_amount)` must be non-null and not 0. |
-| `public.fact_sales_fee_tax` (purchase row) | 1 row / purchase transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax on the original purchase | 1.65 | Third-party/Derived |  | [conditional] See 124 (Vertex line item 2). |
+| `public.fact_sales_fee_tax` | 1 row / purchase transaction_guid | pr_ticket_tax_amount | numeric(19,4) | PR ticket tax on the original purchase | 1.65 | Third-party/Derived |  | [conditional] See 124 (Vertex line item 2). |
 | `public.fact_return` | 1 row / return guid + purchase guid + ... | return_transaction_guid, purchase_transaction_guid | varchar | Refund → purchase mapping | — | ETL |  | [lookup] Join `fst.transaction_guid = UPPER(purchase_transaction_guid)`. |
-| `public.fact_sales_fee_tax` (refund row) | 1 row / refund transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's ticket tax, carried onto the refund | 1.65 | Derived |  | [lookup] UPDATE refund row `= purchase fst.pr_ticket_tax_amount`, matched on `UPPER(return_transaction_guid)`. Only rows in the last 180 days. |
+| `public.fact_sales_fee_tax` | 1 row / refund transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Purchase's ticket tax, carried onto the refund | 1.65 | Derived |  | [lookup] UPDATE refund row `= purchase fst.pr_ticket_tax_amount`, matched on `UPPER(return_transaction_guid)`. Only rows in the last 180 days. |
 | `analytics.transactions_data_source` | 1 row / transaction_guid | ticket_tax_amount_for_returned_purchase | numeric(19,4) | Ticket tax amount for returned purchase | 1.65 | Derived |  | [passthrough] INSERT from fstax, plus the salestax UPDATE. |
 
 </details>
